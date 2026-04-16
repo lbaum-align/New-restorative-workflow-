@@ -18,7 +18,7 @@ import MultiLayerView from './flow/MultiLayerView';
 import Summary from './flow/Summary';
 
 // Application entrypoint with full workflow support
-type View = 'home' | 'flow' | 'resto' | 'iteroHome' | 'patientDetails';
+type View = 'home' | 'flow' | 'resto' | 'iteroHome' | 'patientDetails' | 'scanGuidance';
 type FlowStep = 'search' | 'create' | 'scanning' | 'newScan' | 'scanMultiLayer' | 'multiLayerView' | 'summary';
 
 // Define scan layer type
@@ -128,12 +128,12 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentView, flowStep, selectedPatient]);
 
-  const handleNavigate = (destination: 'flow' | 'resto' | 'iteroHome') => {
-    setCurrentView(destination);
+  const handleNavigate = (destination: 'flow' | 'resto' | 'iteroHome' | 'scanGuidance') => {
     if (destination === 'flow') {
-      // Flow now starts at iTero Homepage
       setCurrentView('iteroHome');
       setSelectedPatient(null);
+    } else {
+      setCurrentView(destination);
     }
   };
 
@@ -520,6 +520,27 @@ export default function App() {
           setCurrentView('patientDetails');
         }}
       />
+    );
+  }
+
+  if (currentView === 'scanGuidance') {
+    const demoPatient = selectedPatient ?? {
+      id: 'demo',
+      firstName: 'Demo',
+      lastName: 'Patient',
+      dateOfBirth: '01/01/1990',
+      gender: 'female',
+      chartNumber: '000000',
+    };
+    return (
+      <LayoutGroup>
+        <ScanPageMultiLayer
+          patient={demoPatient}
+          onBack={() => setCurrentView('home')}
+          onHome={() => setCurrentView('home')}
+          enableScanGuidance={true}
+        />
+      </LayoutGroup>
     );
   }
 

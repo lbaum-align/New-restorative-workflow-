@@ -16,8 +16,9 @@ import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import Component3DModelMary from "../imports/3DModelMary";
 import MoveToPretreatmentModal from "../components/MoveToPretreatmentModal";
 import PrepEditPanel from "../imports/Frame1618872979";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { motion } from "motion/react";
+import ScanGuidanceViewer from "../components/scan-guidance/ScanGuidanceViewer";
 import imgEmergenceProfile from "figma:asset/59c5249493a5cf8767547ab4edc771958cf79908.png";
 import imgScanWand from "figma:asset/6aa095904da22b160466272b62feb75140332534.png";
 import implantUpperArchScan from "figma:asset/0739b756c08b73712f33f02a9c7bb00b11f87b89.png";
@@ -61,9 +62,11 @@ interface ScanPageMultiLayerProps {
   onBiteOptionsChange?: (biteOptions: string[]) => void;
   toothTreatments?: { [tooth: string]: string };
   preTreatmentEnabled?: boolean;
+  /** When true, shows the interactive 3D scan guidance (Full Ghost + Arrow) in the center instead of flat images */
+  enableScanGuidance?: boolean;
 }
 
-export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigateToMultiLayer, onNavigateToView, onNavigateToRx, onNavigateToSummary, scanType, onScannedLayersChange, onWorkflowChange, onBiteOptionsChange, toothTreatments, preTreatmentEnabled }: ScanPageMultiLayerProps) {
+export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigateToMultiLayer, onNavigateToView, onNavigateToRx, onNavigateToSummary, scanType, onScannedLayersChange, onWorkflowChange, onBiteOptionsChange, toothTreatments, preTreatmentEnabled, enableScanGuidance }: ScanPageMultiLayerProps) {
   type WorkflowType = "fixed-restorative" | "implant-based" | "dentures" | "crown";
   const [workflow, setWorkflow] = useState<WorkflowType>(() => {
     // First, check toothTreatments to determine workflow based on assigned treatments
@@ -105,6 +108,49 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [scannedTabs, setScannedTabs] = useState<Set<string>>(new Set());
+
+  // Scan guidance viewer reset counter, active mode and lock state
+  const [guidanceResetCounter, setGuidanceResetCounter] = useState(0);
+  const [lockModel, setLockModel] = useState(false);
+  const [showArrows, setShowArrows] = useState(true);
+  const [ghostMain, setGhostMain] = useState(false);
+  const [syncMain, setSyncMain] = useState(false);
+
+  // Controls panel drag + collapse state
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const [panelPos, setPanelPos] = useState<{ x: number; y: number } | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+
+  // Initialise panel position (bottom-left) after first render
+  useLayoutEffect(() => {
+    if (panelPos === null) {
+      setPanelPos({ x: 16, y: window.innerHeight - 80 });
+    }
+  }, [panelPos]);
+
+  const onPanelDragStart = useCallback((e: React.MouseEvent) => {
+    if (!panelRef.current) return;
+    e.preventDefault();
+    const rect = panelRef.current.getBoundingClientRect();
+    dragState.current = { startX: e.clientX, startY: e.clientY, origX: rect.left, origY: rect.top };
+    const onMove = (mv: MouseEvent) => {
+      if (!dragState.current) return;
+      const dx = mv.clientX - dragState.current.startX;
+      const dy = mv.clientY - dragState.current.startY;
+      setPanelPos({ x: dragState.current.origX + dx, y: dragState.current.origY + dy });
+    };
+    const onUp = () => {
+      dragState.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, []);
+  const [guidanceMode, setGuidanceMode] = useState<
+    'fagwand-lr' | 'fagwand-ud' | 'fagwand-fb' | 'fagwand-roll' | 'fagwand-pitch' | 'fagwand-yaw' | 'fagwand-tilt3d' | 'fagwand-spin3d' | 'rot-cw' | 'rot-ccw' | 'rot-tilt'
+  >('fagwand-lr');
   
   // Jaw scanning state - track which jaw is being viewed/scanned
   const [currentJaw, setCurrentJaw] = useState<'upper' | 'lower' | 'bite' | null>(null);
@@ -171,6 +217,7 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
     // Reset jaw scanning state
     setCurrentJaw(null);
     setTabJawStates({});
+    setGuidanceResetCounter(c => c + 1);
   }, [workflow]);
 
   // Sync auto-detected workflow back to parent (e.g. when detected from toothTreatments on mount)
@@ -589,66 +636,187 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
 
   return (
     <div className="flex flex-col h-screen w-full bg-[#D6E7F1] relative">
-      {/* Workflow Selector - Bottom Left Corner */}
-      <div className={`absolute bottom-[16px] left-[16px] ${isPrepEditOpen ? 'z-[40]' : 'z-[60]'}`}>
-        <div className="flex flex-row items-center gap-[8px] bg-white rounded-[8px] p-[12px] shadow-lg">
-          <button
-            onClick={() => {
-              setWorkflow("crown");
-              onWorkflowChange?.("crown");
-            }}
-            className={`px-[16px] py-[8px] rounded-[6px] transition-all text-center text-[14px] whitespace-nowrap ${
-              workflow === "crown"
-                ? 'bg-[#009ace] text-white'
-                : 'bg-transparent text-[#3e3d40] hover:bg-gray-50'
-            }`}
-            style={{ fontFamily: "'Roboto', sans-serif" }}
-          >
-            Crown
-          </button>
-          <button
-            onClick={() => {
-              setWorkflow("implant-based");
-              onWorkflowChange?.("implantPlanning");
-            }}
-            className={`px-[16px] py-[8px] rounded-[6px] transition-all text-center text-[14px] whitespace-nowrap ${
-              workflow === "implant-based"
-                ? 'bg-[#009ace] text-white'
-                : 'bg-transparent text-[#3e3d40] hover:bg-gray-50'
-            }`}
-            style={{ fontFamily: "'Roboto', sans-serif" }}
-          >
-            Implant based
-          </button>
-          <button
-            onClick={() => {
-              setWorkflow("dentures");
-              onWorkflowChange?.("dentures");
-            }}
-            className={`px-[16px] py-[8px] rounded-[6px] transition-all text-center text-[14px] whitespace-nowrap ${
-              workflow === "dentures"
-                ? 'bg-[#009ace] text-white'
-                : 'bg-transparent text-[#3e3d40] hover:bg-gray-50'
-            }`}
-            style={{ fontFamily: "'Roboto', sans-serif" }}
-          >
-            Dentures
-          </button>
-          <button
-            onClick={() => {
-              setWorkflow("fixed-restorative");
-              onWorkflowChange?.("fixed-restorative");
-            }}
-            className={`px-[16px] py-[8px] rounded-[6px] transition-all text-center text-[14px] whitespace-nowrap ${
-              workflow === "fixed-restorative"
-                ? 'bg-[#009ace] text-white'
-                : 'bg-transparent text-[#3e3d40] hover:bg-gray-50'
-            }`}
-            style={{ fontFamily: "'Roboto', sans-serif" }}
-          >
-            Multi bite
-          </button>
-        </div>
+      {/* Controls panel — draggable + collapsible when scan guidance is active */}
+      <div
+        ref={panelRef}
+        className={`${isPrepEditOpen ? 'z-[40]' : 'z-[60]'}`}
+        style={
+          enableScanGuidance && panelPos
+            ? { position: 'fixed', left: panelPos.x, top: panelPos.y, userSelect: 'none' }
+            : { position: 'absolute', bottom: 16, left: 16 }
+        }
+      >
+        {enableScanGuidance ? (
+          /* Scan Guidance draggable panel */
+          <div className="bg-white rounded-[10px] shadow-xl overflow-hidden" style={{ minWidth: 0 }}>
+            {/* Drag handle + collapse button */}
+            <div
+              className="flex items-center justify-between gap-[8px] px-[12px] py-[8px] bg-gray-50 border-b border-gray-100 cursor-grab active:cursor-grabbing select-none"
+              onMouseDown={onPanelDragStart}
+            >
+              <div className="flex items-center gap-[6px]">
+                {/* Grip dots */}
+                <svg width="10" height="16" viewBox="0 0 10 16" fill="none">
+                  {[0,4,8,12].map(y => [0,4].map(x => (
+                    <circle key={`${x}-${y}`} cx={x+1} cy={y+2} r="1.2" fill="#9ca3af"/>
+                  )))}
+                </svg>
+                <span className="text-[11px] font-semibold text-gray-400 tracking-wide uppercase">Scan Guidance</span>
+              </div>
+              <button
+                onMouseDown={e => e.stopPropagation()}
+                onClick={() => setPanelCollapsed(v => !v)}
+                className="flex items-center justify-center w-[22px] h-[22px] rounded hover:bg-gray-200 transition-colors"
+                title={panelCollapsed ? 'Expand' : 'Collapse'}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ transform: panelCollapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                  <polyline points="18 15 12 9 6 15"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Collapsible content */}
+            {!panelCollapsed && (
+              <div className="p-[10px] flex flex-col gap-[8px]">
+                {/* Direction buttons row */}
+                <div className="flex flex-row flex-wrap items-center gap-[4px]">
+                  {([
+                    { id: 'fagwand-lr',    label: 'Left / Right' },
+                    { id: 'fagwand-ud',    label: 'Up / Down' },
+                    { id: 'fagwand-fb',    label: 'Forward / Back' },
+                    { id: 'fagwand-roll',  label: 'Roll' },
+                    { id: 'fagwand-pitch', label: 'Pitch' },
+                    { id: 'fagwand-yaw',   label: 'Yaw' },
+                    { id: 'fagwand-tilt3d', label: '3D Tilt' },
+                    { id: 'fagwand-spin3d', label: '3D Spin' },
+                    { id: 'rot-cw',        label: 'Rotate CW' },
+                    { id: 'rot-ccw',       label: 'Rotate CCW' },
+                    { id: 'rot-tilt',      label: 'Tilt' },
+                  ] as const).map(({ id, label }) => (
+                    <button
+                      key={id}
+                      onClick={() => { setGuidanceMode(id); setGuidanceResetCounter(c => c + 1); }}
+                      className={`px-[14px] py-[7px] rounded-[6px] transition-all text-center text-[13px] whitespace-nowrap ${
+                        guidanceMode === id ? 'bg-[#009ace] text-white' : 'bg-gray-50 text-[#3e3d40] hover:bg-gray-100'
+                      }`}
+                      style={{ fontFamily: "'Roboto', sans-serif" }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Divider */}
+                <div className="h-px bg-gray-100" />
+
+                {/* Toggle buttons row */}
+                <div className="flex flex-row flex-wrap items-center gap-[4px]">
+                  {/* Lock model */}
+                  <button
+                    onClick={() => setLockModel(v => !v)}
+                    title={lockModel ? 'Model locked' : 'Model free'}
+                    className={`flex items-center gap-[6px] px-[14px] py-[7px] rounded-[6px] transition-all text-[13px] whitespace-nowrap ${
+                      lockModel ? 'bg-[#3e3d40] text-white' : 'bg-gray-50 text-[#3e3d40] hover:bg-gray-100'
+                    }`}
+                    style={{ fontFamily: "'Roboto', sans-serif" }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      {lockModel
+                        ? <><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>
+                        : <><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></>
+                      }
+                    </svg>
+                    {lockModel ? 'Locked' : 'Lock model'}
+                  </button>
+
+                  {/* Arrows */}
+                  <button
+                    onClick={() => setShowArrows(v => !v)}
+                    className={`flex items-center gap-[6px] px-[14px] py-[7px] rounded-[6px] transition-all text-[13px] whitespace-nowrap ${
+                      showArrows ? 'bg-[#009ace] text-white' : 'bg-gray-50 text-[#3e3d40] hover:bg-gray-100'
+                    }`}
+                    style={{ fontFamily: "'Roboto', sans-serif" }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+                    </svg>
+                    Arrows
+                  </button>
+
+                  {/* Ghost main */}
+                  <button
+                    onClick={() => setGhostMain(v => !v)}
+                    title="Toggle main silhouette as ghost"
+                    className={`flex items-center gap-[6px] px-[14px] py-[7px] rounded-[6px] transition-all text-[13px] whitespace-nowrap ${
+                      ghostMain ? 'bg-[#009ace] text-white' : 'bg-gray-50 text-[#3e3d40] hover:bg-gray-100'
+                    }`}
+                    style={{ fontFamily: "'Roboto', sans-serif" }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2a7 7 0 0 0-7 7v5l-2 2v1h18v-1l-2-2V9a7 7 0 0 0-7-7z" strokeDasharray="4 2"/>
+                      <path d="M9 20a3 3 0 0 0 6 0"/>
+                    </svg>
+                    Ghost main
+                  </button>
+
+                  {/* Sync main */}
+                  <button
+                    onClick={() => setSyncMain(v => !v)}
+                    title="Main silhouette follows ghost animation"
+                    className={`flex items-center gap-[6px] px-[14px] py-[7px] rounded-[6px] transition-all text-[13px] whitespace-nowrap ${
+                      syncMain ? 'bg-[#009ace] text-white' : 'bg-gray-50 text-[#3e3d40] hover:bg-gray-100'
+                    }`}
+                    style={{ fontFamily: "'Roboto', sans-serif" }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                      <path d="M5 5v14" strokeDasharray="3 2"/>
+                    </svg>
+                    Sync main
+                  </button>
+
+                  {/* Restart ghost */}
+                  <button
+                    onClick={() => setGuidanceResetCounter(c => c + 1)}
+                    title="Restart ghost animation"
+                    className="flex items-center gap-[6px] px-[14px] py-[7px] rounded-[6px] transition-all text-[13px] whitespace-nowrap bg-gray-50 text-[#3e3d40] hover:bg-gray-100"
+                    style={{ fontFamily: "'Roboto', sans-serif" }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 12a9 9 0 1 1 9 9"/><polyline points="3 3 3 12 12 12"/>
+                    </svg>
+                    Restart ghost
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Normal workflow selector */
+          <div className="flex flex-row items-center gap-[8px] bg-white rounded-[8px] p-[12px] shadow-lg">
+            <button
+              onClick={() => { setWorkflow("crown"); onWorkflowChange?.("crown"); }}
+              className={`px-[16px] py-[8px] rounded-[6px] transition-all text-center text-[14px] whitespace-nowrap ${workflow === "crown" ? 'bg-[#009ace] text-white' : 'bg-transparent text-[#3e3d40] hover:bg-gray-50'}`}
+              style={{ fontFamily: "'Roboto', sans-serif" }}
+            >Crown</button>
+            <button
+              onClick={() => { setWorkflow("implant-based"); onWorkflowChange?.("implantPlanning"); }}
+              className={`px-[16px] py-[8px] rounded-[6px] transition-all text-center text-[14px] whitespace-nowrap ${workflow === "implant-based" ? 'bg-[#009ace] text-white' : 'bg-transparent text-[#3e3d40] hover:bg-gray-50'}`}
+              style={{ fontFamily: "'Roboto', sans-serif" }}
+            >Implant based</button>
+            <button
+              onClick={() => { setWorkflow("dentures"); onWorkflowChange?.("dentures"); }}
+              className={`px-[16px] py-[8px] rounded-[6px] transition-all text-center text-[14px] whitespace-nowrap ${workflow === "dentures" ? 'bg-[#009ace] text-white' : 'bg-transparent text-[#3e3d40] hover:bg-gray-50'}`}
+              style={{ fontFamily: "'Roboto', sans-serif" }}
+            >Dentures</button>
+            <button
+              onClick={() => { setWorkflow("fixed-restorative"); onWorkflowChange?.("fixed-restorative"); }}
+              className={`px-[16px] py-[8px] rounded-[6px] transition-all text-center text-[14px] whitespace-nowrap ${workflow === "fixed-restorative" ? 'bg-[#009ace] text-white' : 'bg-transparent text-[#3e3d40] hover:bg-gray-50'}`}
+              style={{ fontFamily: "'Roboto', sans-serif" }}
+            >Multi bite</button>
+          </div>
+        )}
       </div>
 
       <Header 
@@ -696,32 +864,34 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
           <ToolbarScan onPrepEditChange={setIsPrepEditOpen} />
         </div>
 
-        {/* Wand Scan Button - Right side, bottom aligned */}
-        <div className="absolute right-8 bottom-8 z-50">
-          <button
-            onClick={handleWandScan}
-            disabled={!currentJaw || isScanning || (currentJaw && getTabJawState(activeTabId)[currentJaw] && !activeBiteOptions.includes('Left lateral'))}
-            className={`flex flex-col items-end justify-end gap-2 rounded-md transition-all ${
-              !currentJaw || isScanning || (currentJaw && getTabJawState(activeTabId)[currentJaw] && !activeBiteOptions.includes('Left lateral'))
-                ? 'opacity-20 cursor-not-allowed bg-transparent'
-                : 'bg-transparent hover:bg-white/10 cursor-pointer'
-            }`}
-            title={
-              !currentJaw 
-                ? 'Select a jaw first' 
-                : currentJaw && getTabJawState(activeTabId)[currentJaw] && !activeBiteOptions.includes('Left lateral')
-                ? 'Already scanned'
-                : 'Click to scan with wand'
-            }
-          >
-            <div className="flex items-end justify-center">
-              <img src={imgScanWand} alt="Scan wand" className="w-[280px] object-contain" />
-            </div>
-            <span className="font-['Roboto',sans-serif] font-normal text-[12px] text-[#3e3d40]/70 whitespace-nowrap self-center">
-              {isScanning ? 'Scanning...' : 'Scan'}
-            </span>
-          </button>
-        </div>
+        {/* Wand Scan Button - Right side, bottom aligned (hidden in scan guidance mode) */}
+        {!enableScanGuidance && (
+          <div className="absolute right-8 bottom-8 z-50">
+            <button
+              onClick={handleWandScan}
+              disabled={!currentJaw || isScanning || (currentJaw && getTabJawState(activeTabId)[currentJaw] && !activeBiteOptions.includes('Left lateral'))}
+              className={`flex flex-col items-end justify-end gap-2 rounded-md transition-all ${
+                !currentJaw || isScanning || (currentJaw && getTabJawState(activeTabId)[currentJaw] && !activeBiteOptions.includes('Left lateral'))
+                  ? 'opacity-20 cursor-not-allowed bg-transparent'
+                  : 'bg-transparent hover:bg-white/10 cursor-pointer'
+              }`}
+              title={
+                !currentJaw
+                  ? 'Select a jaw first'
+                  : currentJaw && getTabJawState(activeTabId)[currentJaw] && !activeBiteOptions.includes('Left lateral')
+                  ? 'Already scanned'
+                  : 'Click to scan with wand'
+              }
+            >
+              <div className="flex items-end justify-center">
+                <img src={imgScanWand} alt="Scan wand" className="w-[280px] object-contain" />
+              </div>
+              <span className="font-['Roboto',sans-serif] font-normal text-[12px] text-[#3e3d40]/70 whitespace-nowrap self-center">
+                {isScanning ? 'Scanning...' : 'Scan'}
+              </span>
+            </button>
+          </div>
+        )}
         
         {/* Left side - JawSelector - stays in fixed position */}
         <div 
@@ -805,8 +975,24 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
           )}
         </div>
 
-        {/* Center Area - Scanning Animation and 3D Model */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        {/* Scan Guidance 3D Viewer - shown only when enableScanGuidance is true */}
+        {enableScanGuidance && (
+          <div className="absolute inset-0 z-0" style={{ pointerEvents: 'auto' }}>
+            <ScanGuidanceViewer
+              resetTrigger={guidanceResetCounter}
+              guidanceMode={guidanceMode}
+              lockModel={lockModel}
+              hideTopBar
+              showArrows={showArrows}
+              ghostMain={ghostMain}
+              syncMain={syncMain}
+              requireRightClick
+            />
+          </div>
+        )}
+
+        {/* Center Area - Scanning Animation and 3D Model (only shown in normal test flow) */}
+        <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${enableScanGuidance ? 'hidden' : ''}`}>
           {/* 3D Teeth Model - Only show when scanning or when current jaw has been scanned */}
           {(isScanning || (currentJaw && (
             currentJaw === 'bite' 

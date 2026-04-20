@@ -140,6 +140,12 @@ const GROUPS: GroupDef[] = [
       { id: 'rot-cw',        label: 'Rotate CW' },
       { id: 'rot-ccw',       label: 'Rotate CCW' },
       { id: 'rot-tilt',      label: 'Tilt' },
+      { id: 'fagwand-orbit3d',  label: '3D Orbit' },
+      { id: 'fagwand-nod3d',    label: '3D Nod' },
+      { id: 'fagwand-sweep3d',  label: '3D Sweep' },
+      { id: 'fagwand-rock3d',   label: '3D Rock' },
+      { id: 'fagwand-tumble3d', label: '3D Tumble' },
+      { id: 'fagwand-wobble3d', label: '3D Wobble' },
     ],
   },
   {
@@ -207,7 +213,7 @@ export default function ScanGuidancePage({ onBackToHome }: ScanGuidancePageProps
         {/* Center: GROUP switcher (top level) */}
         <div style={{
           display: 'flex', border: `1px solid ${color.borderDefault}`,
-          borderRadius: radius.full, overflow: 'hidden', flexShrink: 0,
+          borderRadius: radius.full, overflow: 'auto', flexShrink: 1, maxWidth: '70vw',
         }}>
           {GROUPS.map((g, i) => {
             const active = activeGroup === g.id;
@@ -273,6 +279,7 @@ export default function ScanGuidancePage({ onBackToHome }: ScanGuidancePageProps
           padding: `${space[1]} ${space[5]}`, gap: '2px',
           backgroundColor: color.neutral25 ?? color.neutral50,
           borderBottom: `1px solid ${color.borderDefault}`, flexShrink: 0,
+          overflowX: 'auto', flexWrap: 'wrap',
         }}>
           {group.modes.map((m, i) => {
             const active = guidanceMode === m.id;

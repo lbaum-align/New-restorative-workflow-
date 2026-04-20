@@ -15,6 +15,7 @@ export type GuidanceMode = 'classic' | 'edge' | 'dot' | 'glow'
   | 'fgwand-lr' | 'fgwand-ud' | 'fgwand-fb' | 'fgwand-roll' | 'fgwand-pitch' | 'fgwand-yaw'
   | 'fagwand-lr' | 'fagwand-ud' | 'fagwand-fb' | 'fagwand-roll' | 'fagwand-pitch' | 'fagwand-yaw'
   | 'fagwand-tilt3d' | 'fagwand-spin3d'
+  | 'fagwand-orbit3d' | 'fagwand-nod3d' | 'fagwand-sweep3d' | 'fagwand-rock3d' | 'fagwand-tumble3d' | 'fagwand-wobble3d'
   | 'rot-cw' | 'rot-ccw' | 'rot-tilt'
   | 'scan-indicator'
   | 'surface-guide';

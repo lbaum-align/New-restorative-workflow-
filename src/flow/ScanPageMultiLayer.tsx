@@ -19,6 +19,7 @@ import PrepEditPanel from "../imports/Frame1618872979";
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { motion } from "motion/react";
 import ScanGuidanceViewer from "../components/scan-guidance/ScanGuidanceViewer";
+import PrepCopilotExperience from "../components/prep-copilot/PrepCopilotExperience";
 import imgEmergenceProfile from "figma:asset/59c5249493a5cf8767547ab4edc771958cf79908.png";
 import imgScanWand from "figma:asset/6aa095904da22b160466272b62feb75140332534.png";
 import implantUpperArchScan from "figma:asset/0739b756c08b73712f33f02a9c7bb00b11f87b89.png";
@@ -64,9 +65,11 @@ interface ScanPageMultiLayerProps {
   preTreatmentEnabled?: boolean;
   /** When true, shows the interactive 3D scan guidance (Full Ghost + Arrow) in the center instead of flat images */
   enableScanGuidance?: boolean;
+  /** Custom canvas background color (default: #D6E7F1) */
+  canvasBg?: string;
 }
 
-export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigateToMultiLayer, onNavigateToView, onNavigateToRx, onNavigateToSummary, scanType, onScannedLayersChange, onWorkflowChange, onBiteOptionsChange, toothTreatments, preTreatmentEnabled, enableScanGuidance }: ScanPageMultiLayerProps) {
+export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigateToMultiLayer, onNavigateToView, onNavigateToRx, onNavigateToSummary, scanType, onScannedLayersChange, onWorkflowChange, onBiteOptionsChange, toothTreatments, preTreatmentEnabled, enableScanGuidance, canvasBg = '#D6E7F1' }: ScanPageMultiLayerProps) {
   type WorkflowType = "fixed-restorative" | "implant-based" | "dentures" | "crown";
   const [workflow, setWorkflow] = useState<WorkflowType>(() => {
     // First, check toothTreatments to determine workflow based on assigned treatments
@@ -149,8 +152,8 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
     window.addEventListener('mouseup', onUp);
   }, []);
   const [guidanceMode, setGuidanceMode] = useState<
-    'fagwand-lr' | 'fagwand-ud' | 'fagwand-fb' | 'fagwand-roll' | 'fagwand-pitch' | 'fagwand-yaw' | 'fagwand-tilt3d' | 'fagwand-spin3d' | 'rot-cw' | 'rot-ccw' | 'rot-tilt'
-  >('fagwand-lr');
+    'fagwand-tilt3d' | 'fagwand-spin3d' | 'fagwand-nod3d' | 'fagwand-sweep3d' | 'fagwand-rock3d' | 'fagwand-tumble3d' | 'fagwand-wobble3d'
+  >('fagwand-tilt3d');
   
   // Jaw scanning state - track which jaw is being viewed/scanned
   const [currentJaw, setCurrentJaw] = useState<'upper' | 'lower' | 'bite' | null>(null);
@@ -186,6 +189,11 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
 
   // Prep Edit panel state - controlled by ToolbarScan
   const [isPrepEditOpen, setIsPrepEditOpen] = useState(false);
+
+  // Prep Copilot state - controlled by ToolbarScan
+  const [isCopilotActive, setIsCopilotActive] = useState(false);
+  // Toolbar collapsed state — passed to Copilot panel for positioning
+  const [isToolbarCollapsed, setIsToolbarCollapsed] = useState(true);
 
   // Define tab configurations for each workflow
   const workflowTabConfigs: Record<WorkflowType, Array<{ id: string; label: string; type: "treatment" | "bite" | "pre-treatment" | "additional" }>> = {
@@ -635,11 +643,11 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-[#D6E7F1] relative">
-      {/* Controls panel — draggable + collapsible when scan guidance is active */}
+    <div className="flex flex-col h-screen w-full relative" style={{ backgroundColor: canvasBg }}>
+      {/* Controls panel — draggable + collapsible when scan guidance is active (hidden when Copilot) */}
       <div
         ref={panelRef}
-        className={`${isPrepEditOpen ? 'z-[40]' : 'z-[60]'}`}
+        className={`${isPrepEditOpen ? 'z-[40]' : 'z-[60]'} ${isCopilotActive ? 'hidden' : ''}`}
         style={
           enableScanGuidance && panelPos
             ? { position: 'fixed', left: panelPos.x, top: panelPos.y, userSelect: 'none' }
@@ -682,17 +690,13 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
                 {/* Direction buttons row */}
                 <div className="flex flex-row flex-wrap items-center gap-[4px]">
                   {([
-                    { id: 'fagwand-lr',    label: 'Left / Right' },
-                    { id: 'fagwand-ud',    label: 'Up / Down' },
-                    { id: 'fagwand-fb',    label: 'Forward / Back' },
-                    { id: 'fagwand-roll',  label: 'Roll' },
-                    { id: 'fagwand-pitch', label: 'Pitch' },
-                    { id: 'fagwand-yaw',   label: 'Yaw' },
-                    { id: 'fagwand-tilt3d', label: '3D Tilt' },
-                    { id: 'fagwand-spin3d', label: '3D Spin' },
-                    { id: 'rot-cw',        label: 'Rotate CW' },
-                    { id: 'rot-ccw',       label: 'Rotate CCW' },
-                    { id: 'rot-tilt',      label: 'Tilt' },
+                    { id: 'fagwand-tilt3d',   label: '3D Tilt' },
+                    { id: 'fagwand-spin3d',   label: '3D Spin' },
+                    { id: 'fagwand-nod3d',    label: '3D Nod' },
+                    { id: 'fagwand-sweep3d',  label: '3D Sweep' },
+                    { id: 'fagwand-rock3d',   label: '3D Rock' },
+                    { id: 'fagwand-tumble3d', label: '3D Tumble' },
+                    { id: 'fagwand-wobble3d', label: '3D Wobble' },
                   ] as const).map(({ id, label }) => (
                     <button
                       key={id}
@@ -837,7 +841,7 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
       />
 
       {/* Chrome Tabs - Below Header, with dynamic background */}
-      <div className={tabs.find(tab => tab.id === activeTabId)?.type === 'pre-treatment' ? 'bg-[#C5EAD0]' : 'bg-[#D6E7F1]'}>
+      <div style={{ backgroundColor: tabs.find(tab => tab.id === activeTabId)?.type === 'pre-treatment' ? '#C5EAD0' : canvasBg }}>
         <ChromeTabs 
           tabs={tabs}
           activeTabId={activeTabId}
@@ -858,14 +862,14 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
       </div>
       
       {/* Main content area */}
-      <div className={`flex-1 relative ${tabs.find(tab => tab.id === activeTabId)?.type === 'pre-treatment' ? 'bg-[#C5EAD0]' : 'bg-[#D6E7F1]'}`}>
+      <div className="flex-1 relative" style={{ backgroundColor: tabs.find(tab => tab.id === activeTabId)?.type === 'pre-treatment' ? '#C5EAD0' : canvasBg }}>
         {/* ToolbarScan - Fixed in top right corner */}
         <div className="absolute right-4 top-4 z-50">
-          <ToolbarScan onPrepEditChange={setIsPrepEditOpen} />
+          <ToolbarScan onPrepEditChange={setIsPrepEditOpen} onCopilotChange={setIsCopilotActive} onCollapseChange={setIsToolbarCollapsed} />
         </div>
 
-        {/* Wand Scan Button - Right side, bottom aligned (hidden in scan guidance mode) */}
-        {!enableScanGuidance && (
+        {/* Wand Scan Button - Right side, bottom aligned (hidden in scan guidance mode and Copilot) */}
+        {!enableScanGuidance && !isCopilotActive && (
           <div className="absolute right-8 bottom-8 z-50">
             <button
               onClick={handleWandScan}
@@ -893,9 +897,9 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
           </div>
         )}
         
-        {/* Left side - JawSelector - stays in fixed position */}
-        <div 
-          className={`absolute left-4 flex flex-col items-start gap-8 z-50 transition-all duration-200 top-4`}
+        {/* Left side - JawSelector - stays in fixed position (hidden when Copilot active) */}
+        <div
+          className={`absolute left-4 flex flex-col items-start gap-8 z-50 transition-all duration-200 top-4 ${isCopilotActive ? 'hidden' : ''}`}
         >
           <div className="w-[232px] self-start">
             {/* Bite Toolbar - Show above jaw selector when additional bites are selected */}
@@ -964,8 +968,8 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
           </div>
         </div>
         
-        {/* Bottom left: Prep Edit Panel or Rectangle */}
-        <div className="absolute bottom-4 left-4 z-50">
+        {/* Bottom left: Prep Edit Panel or Rectangle (hidden when Copilot active) */}
+        <div className={`absolute bottom-4 left-4 z-50 ${isCopilotActive ? 'hidden' : ''}`}>
           {isPrepEditOpen ? (
             <div className="w-[284px]">
               <PrepEditPanel />
@@ -975,8 +979,8 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
           )}
         </div>
 
-        {/* Scan Guidance 3D Viewer - shown only when enableScanGuidance is true */}
-        {enableScanGuidance && (
+        {/* Scan Guidance 3D Viewer - shown only when enableScanGuidance is true and Copilot is off */}
+        {enableScanGuidance && !isCopilotActive && (
           <div className="absolute inset-0 z-0" style={{ pointerEvents: 'auto' }}>
             <ScanGuidanceViewer
               resetTrigger={guidanceResetCounter}
@@ -992,7 +996,7 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
         )}
 
         {/* Center Area - Scanning Animation and 3D Model (only shown in normal test flow) */}
-        <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${enableScanGuidance ? 'hidden' : ''}`}>
+        <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${enableScanGuidance || isCopilotActive ? 'hidden' : ''}`}>
           {/* 3D Teeth Model - Only show when scanning or when current jaw has been scanned */}
           {(isScanning || (currentJaw && (
             currentJaw === 'bite' 
@@ -1211,6 +1215,11 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
             </motion.div>
           )}
         </div>
+
+        {/* Prep Copilot - full experience: 3D viewer + overlays + side panel */}
+        {isCopilotActive && (
+          <PrepCopilotExperience onClose={() => setIsCopilotActive(false)} toolbarCollapsed={isToolbarCollapsed} />
+        )}
       </div>
 
       {/* Move to Pre-treatment Modal */}

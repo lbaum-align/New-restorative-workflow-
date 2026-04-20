@@ -1576,7 +1576,7 @@ const WRECT_CY = '29.3%';  // (30.7254 + 267.077/2) / 561
 function WandFrame({ mode, flashActive, children, anim }: {
   mode: string; flashActive: boolean; children?: React.ReactNode; anim?: string;
 }) {
-  const bc = flashActive ? '#16A34A' : 'rgba(0,154,206,0.55)';
+  const bc = flashActive ? '#16A34A' : 'rgba(255,255,255,0.65)';
   return (
     <div style={{
       position: 'absolute', top: '50%', left: '50%',
@@ -1691,6 +1691,12 @@ const GWAND_KF = `
   @keyframes gwand-float-yaw   { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(400px) rotateY(-16deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(400px) rotateY(16deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(400px) rotateY(-16deg)} }
   @keyframes gwand-float-tilt3d { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(250px) rotateY(-45deg) rotateX(8deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(250px) rotateY(45deg) rotateX(-8deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(250px) rotateY(-45deg) rotateX(8deg)} }
   @keyframes gwand-float-spin3d { 0%{transform:translate(-50%,-29.3%) rotate(0deg) translateX(44px) rotate(0deg)} 100%{transform:translate(-50%,-29.3%) rotate(360deg) translateX(44px) rotate(-360deg)} }
+  @keyframes gwand-float-orbit3d { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateY(0deg) rotateX(10deg)} 25%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateY(90deg) rotateX(-5deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateY(180deg) rotateX(10deg)} 75%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateY(270deg) rotateX(-5deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateY(360deg) rotateX(10deg)} }
+  @keyframes gwand-float-nod3d { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(350px) rotateX(-20deg) scale(0.9)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(350px) rotateX(20deg) scale(1.1)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(350px) rotateX(-20deg) scale(0.9)} }
+  @keyframes gwand-float-sweep3d { 0%{transform-origin:52.4% 29.3%;transform:translate(calc(-50% + 30px),-29.3%) perspective(350px) rotateY(-20deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(calc(-50% - 30px),-29.3%) perspective(350px) rotateY(20deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(calc(-50% + 30px),-29.3%) perspective(350px) rotateY(-20deg)} }
+  @keyframes gwand-float-rock3d { 0%{transform-origin:52.4% 29.3%;transform:translate(calc(-50% + 25px),-29.3%) rotate(-12deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(calc(-50% - 25px),-29.3%) rotate(12deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(calc(-50% + 25px),-29.3%) rotate(-12deg)} }
+  @keyframes gwand-float-tumble3d { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(-15deg) rotate(-10deg)} 25%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(15deg) rotate(0deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(-15deg) rotate(10deg)} 75%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(15deg) rotate(0deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(-15deg) rotate(-10deg)} }
+  @keyframes gwand-float-wobble3d { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(8deg) rotateY(-12deg)} 25%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(-6deg) rotateY(8deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(8deg) rotateY(12deg)} 75%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(-6deg) rotateY(-8deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(8deg) rotateY(-12deg)} }
 `;
 
 const GWAND_ANIM: Record<string, string> = {
@@ -1720,6 +1726,12 @@ const GWAND_ANIM: Record<string, string> = {
   'fagwand-yaw': 'gwand-float-yaw 3s ease-in-out infinite',
   'fagwand-tilt3d': 'gwand-float-tilt3d 3.2s ease-in-out infinite',
   'fagwand-spin3d': 'gwand-float-spin3d 4s linear infinite',
+  'fagwand-orbit3d': 'gwand-float-orbit3d 5s linear infinite',
+  'fagwand-nod3d': 'gwand-float-nod3d 3s ease-in-out infinite',
+  'fagwand-sweep3d': 'gwand-float-sweep3d 3s ease-in-out infinite',
+  'fagwand-rock3d': 'gwand-float-rock3d 2.8s ease-in-out infinite',
+  'fagwand-tumble3d': 'gwand-float-tumble3d 4s ease-in-out infinite',
+  'fagwand-wobble3d': 'gwand-float-wobble3d 3.5s ease-in-out infinite',
   'rot-cw':  'gwand-float-roll 3s ease-in-out infinite',
   'rot-ccw': 'gwand-float-roll 3s ease-in-out infinite',
   'rot-tilt':'gwand-float-pitch 3s ease-in-out infinite',
@@ -1735,6 +1747,8 @@ const GWAND_LABELS: Record<string, string> = {
   'fagwand-lr': 'Left / Right', 'fagwand-ud': 'Up / Down', 'fagwand-fb': 'Forward / Back',
   'fagwand-roll': 'Roll', 'fagwand-pitch': 'Pitch', 'fagwand-yaw': 'Yaw',
   'fagwand-tilt3d': '3D Tilt', 'fagwand-spin3d': '3D Spin',
+  'fagwand-orbit3d': '3D Orbit', 'fagwand-nod3d': '3D Nod', 'fagwand-sweep3d': '3D Sweep',
+  'fagwand-rock3d': '3D Rock', 'fagwand-tumble3d': '3D Tumble', 'fagwand-wobble3d': '3D Wobble',
   'rot-cw': 'Rotate CW', 'rot-ccw': 'Rotate CCW', 'rot-tilt': 'Tilt',
 };
 
@@ -1887,6 +1901,78 @@ function GWandArrows({ mode }: { mode: string }) {
       </div>
     </div>
   );
+  // 3D Orbit — tilted orbit ring (full circumferential)
+  if (variant === 'orbit3d') return (
+    <div style={{
+      position:'absolute', top:0, left:WRECT_CX,
+      transform: 'translate(-50%, -10%) perspective(250px) rotateX(25deg)',
+      pointerEvents:'none',
+    }}>
+      <div style={{ width: 150, height: 150, position:'relative', animation: 'dof-breathe 2s ease-in-out infinite' }}>
+        <svg width="150" height="150" viewBox="0 0 150 150" fill="none" style={{ filter: BF }}>
+          <BlueDefs/>
+          <ellipse cx="75" cy="75" rx="65" ry="45" stroke="url(#gb-d)" strokeWidth="3" fill="none" strokeLinecap="round" strokeDasharray="10 6"/>
+          <path d="M75 10 A 65 65 0 1 1 10 75" stroke="url(#gb-d)" strokeWidth="3.5" fill="none" strokeLinecap="round"/>
+          <polygon points="10,75 22,62 4,62" fill="url(#gb-d)" />
+          <circle cx="75" cy="10" r="4" fill="url(#gb-r)" />
+        </svg>
+      </div>
+    </div>
+  );
+  // 3D Nod — pitch + forward/back arrows
+  if (variant === 'nod3d') return (
+    <>
+      <div style={{ position:'absolute',right:-68,top:WRECT_CY,transform:'translateY(-50%) rotate(90deg)',animation:'dof-breathe 2s ease-in-out infinite' }}><ArrowCurve s={100}/></div>
+      <div style={{ position:'absolute',top:WRECT_CY,left:WRECT_CX,transform:'translate(-50%,-50%)',animation:'dof-breathe 2s ease-in-out infinite',animationDelay:'0.5s' }}><ArrowDepth s={56}/></div>
+    </>
+  );
+  // 3D Sweep — left/right + yaw arrows
+  if (variant === 'sweep3d') return (
+    <>
+      <div style={{ position:'absolute',left:-64,top:WRECT_CY,transform:'translateY(-50%)',animation:'dof-breathe 2s ease-in-out infinite' }}><ArrowH dir="left"/></div>
+      <div style={{ position:'absolute',right:-64,top:WRECT_CY,transform:'translateY(-50%)',animation:'dof-breathe 2s ease-in-out infinite' }}><ArrowH dir="right"/></div>
+      <div style={{ position:'absolute',top:-60,left:WRECT_CX,transform:'translateX(-50%)',animation:'dof-breathe 2s ease-in-out infinite',animationDelay:'0.5s',opacity:0.6 }}><ArrowCurve s={90}/></div>
+    </>
+  );
+  // 3D Rock — roll + left/right arrows
+  if (variant === 'rock3d') return (
+    <>
+      <div style={{ position:'absolute',left:-64,top:WRECT_CY,transform:'translateY(-50%)',animation:'dof-breathe 2s ease-in-out infinite' }}><ArrowH dir="left"/></div>
+      <div style={{ position:'absolute',right:-64,top:WRECT_CY,transform:'translateY(-50%)',animation:'dof-breathe 2s ease-in-out infinite' }}><ArrowH dir="right"/></div>
+      <div style={{ position:'absolute',top:-60,left:WRECT_CX,transform:'translateX(-50%)',animation:'dof-breathe 2s ease-in-out infinite',animationDelay:'0.5s',opacity:0.6 }}>
+        <svg width="80" height="40" viewBox="0 0 80 40" fill="none" style={{ filter: BF }}>
+          <BlueDefs/>
+          <path d="M10,30 Q40,0 70,30" stroke="url(#gb-d)" strokeWidth="3" fill="none" strokeLinecap="round"/>
+          <polygon points="70,30 62,20 72,18" fill="url(#gb-d)" />
+          <polygon points="10,30 18,20 8,18" fill="url(#gb-d)" />
+        </svg>
+      </div>
+    </>
+  );
+  // 3D Tumble — pitch + roll combined arrows
+  if (variant === 'tumble3d') return (
+    <>
+      <div style={{ position:'absolute',right:-68,top:WRECT_CY,transform:'translateY(-50%) rotate(90deg)',animation:'dof-breathe 2s ease-in-out infinite' }}><ArrowCurve s={90}/></div>
+      <div style={{ position:'absolute',top:-60,left:WRECT_CX,transform:'translateX(-50%)',animation:'dof-breathe 2s ease-in-out infinite',animationDelay:'0.5s' }}><ArrowCurve s={100}/></div>
+    </>
+  );
+  // 3D Wobble — gentle multi-axis oscillation indicator
+  if (variant === 'wobble3d') return (
+    <div style={{
+      position:'absolute', top:WRECT_CY, left:WRECT_CX,
+      width: 100, height: 100,
+      transform: 'translate(-50%,-50%)',
+      animation: 'dof-breathe 2s ease-in-out infinite',
+    }}>
+      <svg width="100" height="100" viewBox="0 0 100 100" fill="none" style={{ filter: BF }}>
+        <BlueDefs/>
+        <circle cx="50" cy="50" r="38" stroke="url(#gb-d)" strokeWidth="2" opacity="0.2" fill="none"/>
+        <path d="M50,12 C65,30 35,50 50,68 C65,86 35,70 50,88" stroke="url(#gb-d)" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeDasharray="6 4"/>
+        <path d="M12,50 C30,35 50,65 68,50 C86,35 70,65 88,50" stroke="url(#gb-d)" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeDasharray="6 4"/>
+        <circle cx="50" cy="50" r="4" fill="url(#gb-r)"/>
+      </svg>
+    </div>
+  );
   return null;
 }
 
@@ -1935,6 +2021,35 @@ function keyDirStyle(mode: string, dir: -1 | 0 | 1): React.CSSProperties | null 
     const rx = dir === -1 ? 8 : -8;
     return { transformOrigin: ORIGIN, transform: `${BASE} perspective(250px) rotateY(${ry}deg) rotateX(${rx}deg)` };
   }
+  if (suffix === 'orbit3d') {
+    const ry = dir === -1 ? -90 : 90;
+    return { transformOrigin: ORIGIN, transform: `${BASE} perspective(300px) rotateY(${ry}deg) rotateX(10deg)` };
+  }
+  if (suffix === 'nod3d') {
+    const rx = dir === -1 ? -20 : 20;
+    const s = dir === -1 ? 0.9 : 1.1;
+    return { transformOrigin: ORIGIN, transform: `${BASE} perspective(350px) rotateX(${rx}deg) scale(${s})` };
+  }
+  if (suffix === 'sweep3d') {
+    const px = dir === -1 ? 30 : -30;
+    const ry = dir === -1 ? -20 : 20;
+    return { transformOrigin: ORIGIN, transform: `translate(calc(-50% + ${px}px),-29.3%) perspective(350px) rotateY(${ry}deg)` };
+  }
+  if (suffix === 'rock3d') {
+    const px = dir === -1 ? 25 : -25;
+    const deg = dir === -1 ? -12 : 12;
+    return { transformOrigin: ORIGIN, transform: `translate(calc(-50% + ${px}px),-29.3%) rotate(${deg}deg)` };
+  }
+  if (suffix === 'tumble3d') {
+    const rx = dir === -1 ? -15 : 15;
+    const rz = dir === -1 ? -10 : 10;
+    return { transformOrigin: ORIGIN, transform: `${BASE} perspective(300px) rotateX(${rx}deg) rotate(${rz}deg)` };
+  }
+  if (suffix === 'wobble3d') {
+    const rx = dir === -1 ? 8 : -6;
+    const ry = dir === -1 ? -12 : 12;
+    return { transformOrigin: ORIGIN, transform: `${BASE} perspective(300px) rotateX(${rx}deg) rotateY(${ry}deg)` };
+  }
   return null;
 }
 
@@ -1948,7 +2063,7 @@ function GhostWandOverlay({ mode, g, f, showArrows = true, ghostFull = false, wa
   const isScanning = g.phase === 'scanning';
   const ghostAnim = GWAND_ANIM[mode] ?? 'none';
 
-  const wandColor = f ? '#16A34A' : isScanning ? 'rgba(0,154,206,0.7)' : 'rgba(0,154,206,0.55)';
+  const wandColor = f ? '#16A34A' : isScanning ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.65)';
 
   const wandW = 'clamp(140px, 14vw, 200px)';
   const wandH = 'clamp(310px, 31vw, 450px)';
@@ -1974,8 +2089,8 @@ function GhostWandOverlay({ mode, g, f, showArrows = true, ghostFull = false, wa
           animation: ghostAnim,
         }}>
           {ghostFull
-            ? <WandSilhouette strokeColor="rgba(0,154,206,0.25)" opacity={1} dashed />
-            : <WandScreenRect strokeColor="rgba(0,154,206,0.25)" opacity={1} dashed />
+            ? <WandSilhouette strokeColor="rgba(255,255,255,0.3)" opacity={1} dashed />
+            : <WandScreenRect strokeColor="rgba(255,255,255,0.3)" opacity={1} dashed />
           }
         </div>
 
@@ -1990,7 +2105,7 @@ function GhostWandOverlay({ mode, g, f, showArrows = true, ghostFull = false, wa
           ...(keyOverride ?? {}),
         }}>
           <WandSilhouette
-            strokeColor={ghostMain ? 'rgba(0,154,206,0.25)' : wandColor}
+            strokeColor={ghostMain ? 'rgba(255,255,255,0.3)' : wandColor}
             opacity={1}
             dashed={ghostMain}
           />

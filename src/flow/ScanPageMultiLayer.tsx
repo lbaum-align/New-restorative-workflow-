@@ -17,9 +17,19 @@ import Component3DModelMary from "../imports/3DModelMary";
 import MoveToPretreatmentModal from "../components/MoveToPretreatmentModal";
 import PrepEditPanel from "../imports/Frame1618872979";
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
+import { useUndoHistory } from "../hooks/useUndoHistory";
+import UndoFilmstripChip from "../components/UndoFilmstripChip";
+import UndoBorderlessChip from "../components/UndoBorderlessChip";
+import UndoCompactBar from "../components/UndoCompactBar";
+import UndoLabeledList from "../components/UndoLabeledList";
+import UndoPill from "../components/UndoPill";
+import UndoIconsOnly from "../components/UndoIconsOnly";
+import UndoStacked from "../components/UndoStacked";
+import UndoHorizontalStacked from "../components/UndoHorizontalStacked";
 import ScanGuidanceViewer from "../components/scan-guidance/ScanGuidanceViewer";
 import PrepCopilotExperience from "../components/prep-copilot/PrepCopilotExperience";
+import JawPlyViewer from "../components/jaw-viewer/JawPlyViewer";
 import imgEmergenceProfile from "figma:asset/59c5249493a5cf8767547ab4edc771958cf79908.png";
 import imgScanWand from "figma:asset/6aa095904da22b160466272b62feb75140332534.png";
 import implantUpperArchScan from "figma:asset/0739b756c08b73712f33f02a9c7bb00b11f87b89.png";
@@ -31,6 +41,14 @@ import crownPreTreatmentLowerScan from "figma:asset/febe43c81aeab5ab275db2c6ae58
 import crownTreatmentLowerScan from "figma:asset/24c58f3ce671456a5911284503eff6df6b81e11e.png";
 const crownUpperArchScan = "https://images.unsplash.com/photo-1650739353152-5488298a9d38?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkZW50YWwlMjBjcm93biUyMHVwcGVyJTIwdGVldGglMjBzY2FufGVufDF8fHx8MTc3MDczMjIwMnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
 const crownLowerArchScan = "https://images.unsplash.com/photo-1687810953487-7b92e3f7df85?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkZW50YWwlMjBjcm93biUyMGxvd2VyJTIwdGVldGglMjBzY2FufGVufDF8fHx8MTc3MDczMjIwMnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
+
+function solidColor(bg: string): string {
+  if (bg.startsWith('linear-gradient') || bg.startsWith('radial-gradient')) {
+    const m = bg.match(/#[0-9a-fA-F]{6}/);
+    return m ? m[0] : '#D6E7F1';
+  }
+  return bg;
+}
 
 interface Patient {
   id: string;
@@ -67,9 +85,13 @@ interface ScanPageMultiLayerProps {
   enableScanGuidance?: boolean;
   /** Custom canvas background color (default: #D6E7F1) */
   canvasBg?: string;
+  /** Callback when canvas background changes from settings */
+  onCanvasBgChange?: (color: string) => void;
+  /** When true, hides the Lumina Wand and workflow selector (entered from canvas theme page) */
+  isCanvasThemeMode?: boolean;
 }
 
-export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigateToMultiLayer, onNavigateToView, onNavigateToRx, onNavigateToSummary, scanType, onScannedLayersChange, onWorkflowChange, onBiteOptionsChange, toothTreatments, preTreatmentEnabled, enableScanGuidance, canvasBg = '#D6E7F1' }: ScanPageMultiLayerProps) {
+export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigateToMultiLayer, onNavigateToView, onNavigateToRx, onNavigateToSummary, scanType, onScannedLayersChange, onWorkflowChange, onBiteOptionsChange, toothTreatments, preTreatmentEnabled, enableScanGuidance, canvasBg = '#D6E7F1', onCanvasBgChange, isCanvasThemeMode = false }: ScanPageMultiLayerProps) {
   type WorkflowType = "fixed-restorative" | "implant-based" | "dentures" | "crown";
   const [workflow, setWorkflow] = useState<WorkflowType>(() => {
     // First, check toothTreatments to determine workflow based on assigned treatments
@@ -152,7 +174,7 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
     window.addEventListener('mouseup', onUp);
   }, []);
   const [guidanceMode, setGuidanceMode] = useState<
-    'fagwand-tilt3d' | 'fagwand-spin3d' | 'fagwand-nod3d' | 'fagwand-sweep3d' | 'fagwand-rock3d' | 'fagwand-tumble3d' | 'fagwand-wobble3d'
+    'fagwand-tilt3d' | 'fagwand-spin3d' | 'fagwand-nod3d' | 'fagwand-sweep3d' | 'fagwand-rock3d' | 'fagwand-tumble3d' | 'fagwand-wobble3d' | 'smart-nav'
   >('fagwand-tilt3d');
   
   // Jaw scanning state - track which jaw is being viewed/scanned
@@ -195,6 +217,21 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
   // Toolbar collapsed state — passed to Copilot panel for positioning
   const [isToolbarCollapsed, setIsToolbarCollapsed] = useState(true);
 
+  // Track whether any toolbar tool is active (to hide workflow selector + rectangle)
+  const [isAnyToolActive, setIsAnyToolActive] = useState(false);
+  // Monochrome mode (stone view) - controlled by ToolbarScan
+  const [isMonochrome, setIsMonochrome] = useState(false);
+
+  // Undo panel open state (panels render here at bottom-left, ToolbarScan controls open/close)
+  const [isUndoPanelOpen, setIsUndoPanelOpen] = useState(false);
+  const undoPanelCloseRef = useRef<(() => void) | null>(null);
+  const isRestoringRef = useRef(false);
+
+  // Undo history
+  const undoHistory = useUndoHistory();
+  // Which undo UI variant: 1=ActionBar, 2=Timeline, 3=DirectToast, 4=List, 5=Filmstrip, 6=3DFilm
+  const [undoVariant, setUndoVariant] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
+
   // Define tab configurations for each workflow
   const workflowTabConfigs: Record<WorkflowType, Array<{ id: string; label: string; type: "treatment" | "bite" | "pre-treatment" | "additional" }>> = {
     "fixed-restorative": [
@@ -226,6 +263,7 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
     setCurrentJaw(null);
     setTabJawStates({});
     setGuidanceResetCounter(c => c + 1);
+    undoHistory.reset();
   }, [workflow]);
 
   // Sync auto-detected workflow back to parent (e.g. when detected from toothTreatments on mount)
@@ -350,9 +388,14 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
       setTabs([...tabs, newTab]);
     }
     
+    undoHistory.push(
+      { tabJawStates, scannedTabs: [...scannedTabs], activeTabId, tabs, currentJaw },
+      `Added "${label}" tab`
+    );
+
     // Auto-select the new tab
     setActiveTabId(newId);
-    
+
     // Reset jaw scanning state for pre-treatment tabs
     if (scanType === "Pre-treatment") {
       setCurrentJaw(null);
@@ -498,8 +541,12 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
             
             // Universal completion: mark the current jaw as scanned for the active tab
             if (currentJaw && (currentJaw === 'upper' || currentJaw === 'lower' || currentJaw === 'bite')) {
+              undoHistory.push(
+                { tabJawStates, scannedTabs: [...scannedTabs], activeTabId, tabs, currentJaw },
+                `Scanned ${currentJaw} jaw`
+              );
               setTabJawScanned(activeTabId, currentJaw);
-              
+
               // Mark tab as having scan data
               setScannedTabs(prev => new Set([...prev, activeTabId]));
               setTabs(prevTabs => prevTabs.map(tab => 
@@ -630,6 +677,10 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
 
   // Handle tab deletion cleanup - clean up orphaned jaw states and scanned tabs
   const handleDeleteTab = (tabId: string) => {
+    undoHistory.push(
+      { tabJawStates, scannedTabs: [...scannedTabs], activeTabId, tabs, currentJaw },
+      `Deleted tab "${tabs.find(t => t.id === tabId)?.label ?? tabId}"`
+    );
     setScannedTabs(prev => {
       const newSet = new Set(prev);
       newSet.delete(tabId);
@@ -642,12 +693,44 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
     });
   };
 
+  // Restore component state from a ScanSnapshot
+  const restoreSnapshot = (snap: import("../hooks/useUndoHistory").ScanSnapshot) => {
+    isRestoringRef.current = true;
+    setTabs(snap.tabs as typeof tabs);
+    setTabJawStates(snap.tabJawStates);
+    setScannedTabs(new Set(snap.scannedTabs));
+    setActiveTabId(snap.activeTabId);
+    setCurrentJaw(snap.currentJaw);
+    setIsScanning(false);
+    setScanProgress(0);
+    requestAnimationFrame(() => { isRestoringRef.current = false; });
+  };
+
+  // Unified handler for undo tool actions
+  const handleUndoAction = (action: "undo" | "redo" | "accept") => {
+    if (action === "undo") {
+      const snap = undoHistory.undo();
+      if (snap) restoreSnapshot(snap);
+    } else if (action === "redo") {
+      const snap = undoHistory.redo();
+      if (snap) restoreSnapshot(snap);
+    } else if (action === "accept") {
+      undoHistory.accept();
+    }
+  };
+
+  // Jump to a specific history index (Option 2 timeline)
+  const handleUndoJumpTo = (index: number) => {
+    const snap = undoHistory.jumpTo(index);
+    if (snap) restoreSnapshot(snap);
+  };
+
   return (
-    <div className="flex flex-col h-screen w-full relative" style={{ backgroundColor: canvasBg }}>
-      {/* Controls panel — draggable + collapsible when scan guidance is active (hidden when Copilot) */}
+    <div className="flex flex-col h-screen w-full relative" style={{ background: canvasBg }}>
+      {/* Controls panel — draggable + collapsible when scan guidance is active (hidden when any toolbar tool is active) */}
       <div
         ref={panelRef}
-        className={`${isPrepEditOpen ? 'z-[40]' : 'z-[60]'} ${isCopilotActive ? 'hidden' : ''}`}
+        className={`${isPrepEditOpen ? 'z-[40]' : 'z-[60]'} ${isAnyToolActive ? 'hidden' : ''}`}
         style={
           enableScanGuidance && panelPos
             ? { position: 'fixed', left: panelPos.x, top: panelPos.y, userSelect: 'none' }
@@ -697,6 +780,7 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
                     { id: 'fagwand-rock3d',   label: '3D Rock' },
                     { id: 'fagwand-tumble3d', label: '3D Tumble' },
                     { id: 'fagwand-wobble3d', label: '3D Wobble' },
+                    { id: 'smart-nav',        label: 'Smart Nav' },
                   ] as const).map(({ id, label }) => (
                     <button
                       key={id}
@@ -797,7 +881,8 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
             )}
           </div>
         ) : (
-          /* Normal workflow selector */
+          /* Normal workflow selector - hidden in canvas theme mode */
+          !isCanvasThemeMode && (
           <div className="flex flex-row items-center gap-[8px] bg-white rounded-[8px] p-[12px] shadow-lg">
             <button
               onClick={() => { setWorkflow("crown"); onWorkflowChange?.("crown"); }}
@@ -820,6 +905,7 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
               style={{ fontFamily: "'Roboto', sans-serif" }}
             >Multi bite</button>
           </div>
+          )
         )}
       </div>
 
@@ -838,10 +924,12 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
         onNavigateToScan={onNavigateToMultiLayer}
         onNavigateToView={onNavigateToView}
         onNavigateToSummary={onNavigateToSummary}
+        canvasBg={canvasBg}
+        onCanvasBgChange={onCanvasBgChange}
       />
 
-      {/* Chrome Tabs - Below Header, with dynamic background */}
-      <div style={{ backgroundColor: tabs.find(tab => tab.id === activeTabId)?.type === 'pre-treatment' ? '#C5EAD0' : canvasBg }}>
+      {/* Chrome Tabs - Below Header, with solid background (no gradient) */}
+      <div style={{ backgroundColor: tabs.find(tab => tab.id === activeTabId)?.type === 'pre-treatment' ? '#C5EAD0' : solidColor(canvasBg) }}>
         <ChromeTabs 
           tabs={tabs}
           activeTabId={activeTabId}
@@ -862,14 +950,54 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
       </div>
       
       {/* Main content area */}
-      <div className="flex-1 relative" style={{ backgroundColor: tabs.find(tab => tab.id === activeTabId)?.type === 'pre-treatment' ? '#C5EAD0' : canvasBg }}>
+      <div className="flex-1 relative" style={{ background: tabs.find(tab => tab.id === activeTabId)?.type === 'pre-treatment' ? '#C5EAD0' : canvasBg }}>
         {/* ToolbarScan - Fixed in top right corner */}
         <div className="absolute right-4 top-4 z-50">
-          <ToolbarScan onPrepEditChange={setIsPrepEditOpen} onCopilotChange={setIsCopilotActive} onCollapseChange={setIsToolbarCollapsed} />
+          <ToolbarScan
+            onPrepEditChange={setIsPrepEditOpen}
+            onCopilotChange={setIsCopilotActive}
+            onCollapseChange={setIsToolbarCollapsed}
+            onAnyToolActiveChange={setIsAnyToolActive}
+            onMonochromeChange={setIsMonochrome}
+            onUndoPanelOpenChange={(isOpen, closeHandler) => {
+              setIsUndoPanelOpen(isOpen);
+              undoPanelCloseRef.current = closeHandler ?? null;
+            }}
+            undoState={{
+              canUndo: undoHistory.canUndo,
+              canRedo: undoHistory.canRedo,
+              stepInfo: undoHistory.stepInfo,
+              lastLabel: undoHistory.currentLabel,
+              past: undoHistory.past,
+              future: undoHistory.future,
+            }}
+            onUndo={handleUndoAction}
+            undoVariant={undoVariant}
+          />
         </div>
 
-        {/* Wand Scan Button - Right side, bottom aligned (hidden in scan guidance mode and Copilot) */}
-        {!enableScanGuidance && !isCopilotActive && (
+        {/* Undo variant switcher — only visible when undo tool is active */}
+        {isUndoPanelOpen && (
+          <div className={`absolute left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-sm border border-black/8 ${undoVariant === 1 || undoVariant === 2 || undoVariant === 5 || undoVariant === 6 || undoVariant === 8 ? 'bottom-20' : 'bottom-4'}`}>
+            <span className="text-[11px] text-[#8a8a8a] mr-1 font-medium">Undo UI:</span>
+            {([1, 2, 3, 4, 5, 6, 7, 8] as const).map(v => (
+              <button
+                key={v}
+                onClick={() => setUndoVariant(v)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                  undoVariant === v
+                    ? 'bg-[#009ACE] text-white'
+                    : 'text-[#3E3D40] hover:bg-gray-100'
+                }`}
+              >
+                {v === 1 ? 'Bordered' : v === 2 ? 'Borderless' : v === 3 ? 'Compact' : v === 4 ? 'Labeled' : v === 5 ? 'Pill' : v === 6 ? 'Icons' : v === 7 ? 'Stacked' : 'H-Stack'}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Wand Scan Button - Right side, bottom aligned (hidden in scan guidance mode, Copilot, and canvas theme mode) */}
+        {!enableScanGuidance && !isCopilotActive && !isCanvasThemeMode && (
           <div className="absolute right-8 bottom-8 z-50">
             <button
               onClick={handleWandScan}
@@ -968,8 +1096,8 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
           </div>
         </div>
         
-        {/* Bottom left: Prep Edit Panel or Rectangle (hidden when Copilot active) */}
-        <div className={`absolute bottom-4 left-4 z-50 ${isCopilotActive ? 'hidden' : ''}`}>
+        {/* Bottom left: Prep Edit Panel or Rectangle (hidden when any toolbar tool is active, except Prep Edit itself) */}
+        <div className={`absolute bottom-4 left-4 z-50 ${isAnyToolActive && !isPrepEditOpen ? 'hidden' : ''}`}>
           {isPrepEditOpen ? (
             <div className="w-[284px]">
               <PrepEditPanel />
@@ -978,6 +1106,88 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
             <Rectangle22322 />
           )}
         </div>
+
+        {/* Undo panels — bottom left, same position as Prep Edit */}
+        {isUndoPanelOpen && (
+          <div className="absolute bottom-4 left-4 z-50">
+            <AnimatePresence>
+              {undoVariant === 1 && (
+                <UndoFilmstripChip
+                  canUndo={undoHistory.canUndo}
+                  canRedo={undoHistory.canRedo}
+                  onUndo={() => handleUndoAction("undo")}
+                  onRedo={() => handleUndoAction("redo")}
+                  onAccept={() => { handleUndoAction("accept"); undoPanelCloseRef.current?.(); }}
+                />
+              )}
+              {undoVariant === 2 && (
+                <UndoBorderlessChip
+                  canUndo={undoHistory.canUndo}
+                  canRedo={undoHistory.canRedo}
+                  onUndo={() => handleUndoAction("undo")}
+                  onRedo={() => handleUndoAction("redo")}
+                  onAccept={() => { handleUndoAction("accept"); undoPanelCloseRef.current?.(); }}
+                />
+              )}
+              {undoVariant === 3 && (
+                <UndoCompactBar
+                  canUndo={undoHistory.canUndo}
+                  canRedo={undoHistory.canRedo}
+                  onUndo={() => handleUndoAction("undo")}
+                  onRedo={() => handleUndoAction("redo")}
+                  onAccept={() => { handleUndoAction("accept"); undoPanelCloseRef.current?.(); }}
+                  onClose={() => undoPanelCloseRef.current?.()}
+                />
+              )}
+              {undoVariant === 4 && (
+                <UndoLabeledList
+                  canUndo={undoHistory.canUndo}
+                  canRedo={undoHistory.canRedo}
+                  onUndo={() => handleUndoAction("undo")}
+                  onRedo={() => handleUndoAction("redo")}
+                  onAccept={() => { handleUndoAction("accept"); undoPanelCloseRef.current?.(); }}
+                  onClose={() => undoPanelCloseRef.current?.()}
+                />
+              )}
+              {undoVariant === 5 && (
+                <UndoPill
+                  canUndo={undoHistory.canUndo}
+                  canRedo={undoHistory.canRedo}
+                  onUndo={() => handleUndoAction("undo")}
+                  onRedo={() => handleUndoAction("redo")}
+                  onAccept={() => { handleUndoAction("accept"); undoPanelCloseRef.current?.(); }}
+                />
+              )}
+              {undoVariant === 6 && (
+                <UndoIconsOnly
+                  canUndo={undoHistory.canUndo}
+                  canRedo={undoHistory.canRedo}
+                  onUndo={() => handleUndoAction("undo")}
+                  onRedo={() => handleUndoAction("redo")}
+                  onAccept={() => { handleUndoAction("accept"); undoPanelCloseRef.current?.(); }}
+                />
+              )}
+              {undoVariant === 7 && (
+                <UndoStacked
+                  canUndo={undoHistory.canUndo}
+                  canRedo={undoHistory.canRedo}
+                  onUndo={() => handleUndoAction("undo")}
+                  onRedo={() => handleUndoAction("redo")}
+                  onAccept={() => { handleUndoAction("accept"); undoPanelCloseRef.current?.(); }}
+                />
+              )}
+              {undoVariant === 8 && (
+                <UndoHorizontalStacked
+                  canUndo={undoHistory.canUndo}
+                  canRedo={undoHistory.canRedo}
+                  onUndo={() => handleUndoAction("undo")}
+                  onRedo={() => handleUndoAction("redo")}
+                  onAccept={() => { handleUndoAction("accept"); undoPanelCloseRef.current?.(); }}
+                />
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
         {/* Scan Guidance 3D Viewer - shown only when enableScanGuidance is true and Copilot is off */}
         {enableScanGuidance && !isCopilotActive && (
@@ -991,15 +1201,16 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
               ghostMain={ghostMain}
               syncMain={syncMain}
               requireRightClick
+              jaw={currentJaw || 'upper'}
             />
           </div>
         )}
 
         {/* Center Area - Scanning Animation and 3D Model (only shown in normal test flow) */}
         <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${enableScanGuidance || isCopilotActive ? 'hidden' : ''}`}>
-          {/* 3D Teeth Model - Only show when scanning or when current jaw has been scanned */}
-          {(isScanning || (currentJaw && (
-            currentJaw === 'bite' 
+          {/* 3D Teeth Model - Show when scanning, jaw scanned, or undo panel is open */}
+          {(isScanning || isUndoPanelOpen || (currentJaw && (
+            currentJaw === 'bite'
               ? (getTabJawState(activeTabId).upper || getTabJawState(activeTabId).lower || getTabJawState(activeTabId).bite)
               : getTabJawState(activeTabId)[currentJaw]
           ))) && (() => {
@@ -1013,187 +1224,20 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
             // Check if left lateral bite is active
             const isLeftLateralActive = activeBiteOptions.includes('Left lateral');
             
-            // Render model based on currentJaw and tab type/workflow
-            const renderModel = () => {
-              // Left lateral on pre-treatment always shows 3DModelMary
-              if (isPreTreatment && isLeftLateralActive) {
-                return <Component3DModelMary />;
-              }
-              
-              // BITE/BOTH VIEW - universal for all layers and workflows
-              if (currentJaw === 'bite') {
-                // Implant-based workflow: show stacked upper + lower matching the view page exactly
-                if (workflow === 'implant-based') {
-                  return (
-                    <div className="w-full h-full relative">
-                      {/* Treatment upper scan - z=4, same as view page */}
-                      <div 
-                        className="absolute inset-0 flex items-center justify-center"
-                        style={{ zIndex: 4 }}
-                      >
-                        <img 
-                          src={implantUpperArchScan} 
-                          alt="Treatment upper scan" 
-                          className="max-w-[600px] max-h-[450px] object-contain"
-                          style={{ marginTop: '-38%' }}
-                        />
-                      </div>
-                      {/* Treatment lower scan - z=2, same as view page */}
-                      <div 
-                        className="absolute inset-0 flex items-center justify-center"
-                        style={{ zIndex: 2 }}
-                      >
-                        <img 
-                          src={implantTreatmentLowerScan} 
-                          alt="Treatment lower scan" 
-                          className="w-full h-full object-contain"
-                          style={{ marginTop: '40px' }}
-                        />
-                      </div>
-                    </div>
-                  );
-                }
-                // Crown workflow: show stacked crown upper + lower
-                if (workflow === 'crown') {
-                  return (
-                    <div className="w-[800px] h-[600px] relative">
-                      {/* Crown upper scan */}
-                      <div 
-                        className="absolute inset-0 flex items-center justify-center"
-                        style={{ zIndex: 2 }}
-                      >
-                        <img 
-                          src={crownPreTreatmentUpperScan} 
-                          alt="Crown upper scan" 
-                          className="max-w-[680px] max-h-[500px] object-contain"
-                          style={{ marginTop: '-15%' }}
-                        />
-                      </div>
-                      {/* Crown lower scan */}
-                      <div 
-                        className="absolute inset-0 flex items-center justify-center"
-                        style={{ zIndex: 1 }}
-                      >
-                        <img 
-                          src={crownTreatmentLowerScan} 
-                          alt="Crown lower scan" 
-                          className="max-w-[640px] max-h-[460px] object-contain"
-                          style={{ marginTop: '15%' }}
-                        />
-                      </div>
-                    </div>
-                  );
-                }
-                // Default: generic bite model
-                return (
-                  <div className="[&>*]:flex [&>*]:flex-col [&>*]:gap-[-231px]">
-                    <BiteModel />
-                  </div>
-                );
-              }
-              
-              // PRE-TREATMENT tab models
-              if (isPreTreatment) {
-                if (workflow === 'implant-based') {
-                  return currentJaw === 'lower' ? (
-                    <img src={implantLowerArchScan} alt="Implant lower arch scan" className="w-full h-full object-contain" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <img src={implantUpperArchScan} alt="Implant upper arch scan" className="w-full h-full object-contain" />
-                    </div>
-                  );
-                }
-                if (workflow === 'crown') {
-                  return currentJaw === 'lower' ? (
-                    <div className="w-[800px] h-[600px] flex items-center justify-center">
-                      <img src={crownPreTreatmentLowerScan} alt="Crown pre-treatment lower arch scan" className="max-w-[720px] max-h-[520px] object-contain" />
-                    </div>
-                  ) : (
-                    <div className="w-[800px] h-[600px] flex items-center justify-center">
-                      <img src={crownPreTreatmentUpperScan} alt="Crown pre-treatment upper arch scan" className="max-w-[780px] max-h-[560px] object-contain" />
-                    </div>
-                  );
-                }
-                // Fixed-restorative / other pre-treatment
-                return currentJaw === 'lower' ? (
-                  <LowerModel />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="w-[520px] h-[400px]"><UpperModel /></div>
-                  </div>
-                );
-              }
-              
-              // TREATMENT tab - Crown workflow
-              if (isTreatmentCrown) {
-                return currentJaw === 'lower' ? (
-                  <div className="w-[800px] h-[600px] flex items-center justify-center">
-                    <img src={crownTreatmentLowerScan} alt="Crown treatment lower arch scan" className="max-w-[720px] max-h-[520px] object-contain" />
-                  </div>
-                ) : (
-                  <div className="w-[800px] h-[600px] flex items-center justify-center">
-                    <img src={crownPreTreatmentUpperScan} alt="Crown treatment upper arch scan" className="max-w-[780px] max-h-[560px] object-contain" />
-                  </div>
-                );
-              }
-              
-              // TREATMENT tab - Implant-based workflow
-              if (isTreatmentImplant) {
-                return currentJaw === 'lower' ? (
-                  <img src={implantTreatmentLowerScan} alt="Implant treatment lower arch with scan bodies" className="w-full h-full object-contain" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <img src={implantUpperArchScan} alt="Implant treatment upper arch scan" className="w-full h-full object-contain" />
-                  </div>
-                );
-              }
-              
-              // TREATMENT tab - Fixed-restorative workflow
-              if (isTreatmentFixedRestorative) {
-                return currentJaw === 'lower' ? (
-                  <Component3EModelLower />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="w-[520px] h-[400px]"><Component3EModel /></div>
-                  </div>
-                );
-              }
-              
-              // EMERGENCE PROFILE tab
-              if (isEmergenceProfile) {
-                return currentJaw === 'lower' ? (
-                  <ImageWithFallback src={implantAdditionalLowerScan} alt="Emergence profile lower jaw" className="w-full h-full object-contain" />
-                ) : (
-                  <Component3EModel />
-                );
-              }
-              
-              // ADDITIONAL tab
-              if (activeTab?.type === 'additional') {
-                if (workflow === 'implant-based' && currentJaw === 'lower') {
-                  return <img src={implantAdditionalLowerScan} alt="Implant additional lower arch scan" className="w-full h-full object-contain" />;
-                }
-                return currentJaw === 'lower' ? <Component3EModelLower /> : <Component3EModel />;
-              }
-              
-              // DEFAULT - other scans
-              return currentJaw === 'lower' ? <Component3EModelLower /> : <Component3EModel />;
-            };
-            
             return (
               <motion.div
-                initial={{ opacity: 0 }}
+                initial={{ opacity: isRestoringRef.current ? 1 : 0 }}
                 animate={{ opacity: isScanning ? scanProgress / 100 : 1 }}
-                key={`${currentJaw}-${activeTabId}-${isLeftLateralActive ? 'left-lateral' : ''}`} 
-                className={`w-[800px] h-[600px] ${isEmergenceProfile ? 'relative z-0' : ''}`}
+                key={`${currentJaw}-${activeTabId}-${isLeftLateralActive ? 'left-lateral' : ''}`}
+                className="absolute inset-0 pointer-events-auto"
               >
-                {renderModel()}
+                <JawPlyViewer jaw={currentJaw || 'upper'} monochrome={isMonochrome} />
               </motion.div>
             );
           })()}
           
-          {/* Scanning Wand Animation - Only show while scanning */}
-          {isScanning && (
+          {/* Scanning Wand Animation - Only show while scanning (hidden in canvas theme mode) */}
+          {isScanning && !isCanvasThemeMode && (
             <motion.div
               className="absolute top-1/2 -translate-y-1/2"
               style={{ transformOrigin: 'bottom center' }}

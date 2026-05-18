@@ -27,6 +27,7 @@ import UndoPill from "../components/UndoPill";
 import UndoIconsOnly from "../components/UndoIconsOnly";
 import UndoStacked from "../components/UndoStacked";
 import UndoHorizontalStacked from "../components/UndoHorizontalStacked";
+import UndoLabeledChip from "../components/UndoLabeledChip";
 import ScanGuidanceViewer from "../components/scan-guidance/ScanGuidanceViewer";
 import PrepCopilotExperience from "../components/prep-copilot/PrepCopilotExperience";
 import JawPlyViewer from "../components/jaw-viewer/JawPlyViewer";
@@ -230,7 +231,7 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
   // Undo history
   const undoHistory = useUndoHistory();
   // Which undo UI variant: 1=ActionBar, 2=Timeline, 3=DirectToast, 4=List, 5=Filmstrip, 6=3DFilm
-  const [undoVariant, setUndoVariant] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
+  const [undoVariant, setUndoVariant] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9>(1);
   // Undo panel position: 'left-bottom', 'center-bottom', 'under-toolbar'
   type UndoPosition = 'left-bottom' | 'center-bottom' | 'under-toolbar';
   const [undoPosition, setUndoPosition] = useState<UndoPosition>('left-bottom');
@@ -1011,14 +1012,14 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
               }));
             }}
             style={switcherDragPos ? { x: switcherDragPos.x, y: switcherDragPos.y } : undefined}
-            className={`absolute left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-1 bg-white/90 backdrop-blur-sm rounded-[16px] px-3 py-2 shadow-lg border border-black/8 cursor-grab active:cursor-grabbing ${undoVariant === 1 || undoVariant === 2 || undoVariant === 5 || undoVariant === 6 || undoVariant === 8 ? 'bottom-20' : 'bottom-4'}`}
+            className={`absolute left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-1 bg-white/90 backdrop-blur-sm rounded-[16px] px-3 py-2 shadow-lg border border-black/8 cursor-grab active:cursor-grabbing ${undoVariant === 1 || undoVariant === 2 || undoVariant === 5 || undoVariant === 6 || undoVariant === 8 || undoVariant === 9 ? 'bottom-20' : 'bottom-4'}`}
           >
             {/* Drag handle */}
             <div className="w-8 h-1 rounded-full bg-black/15 mb-0.5" />
             {/* Variant row */}
             <div className="flex items-center gap-1">
               <span className="text-[11px] text-[#8a8a8a] mr-1 font-medium">UI:</span>
-              {([1, 2, 3, 4, 5, 6, 7, 8] as const).map(v => (
+              {([1, 2, 3, 4, 5, 6, 7, 8, 9] as const).map(v => (
                 <button
                   key={v}
                   onPointerDown={e => e.stopPropagation()}
@@ -1029,7 +1030,7 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
                       : 'text-[#3E3D40] hover:bg-gray-100'
                   }`}
                 >
-                  {v === 1 ? 'Bordered' : v === 2 ? 'Borderless' : v === 3 ? 'Compact' : v === 4 ? 'Labeled' : v === 5 ? 'Pill' : v === 6 ? 'Icons' : v === 7 ? 'Stacked' : 'H-Stack'}
+                  {v === 1 ? 'Bordered' : v === 2 ? 'Borderless' : v === 3 ? 'Compact' : v === 4 ? 'Labeled' : v === 5 ? 'Pill' : v === 6 ? 'Icons' : v === 7 ? 'Stacked' : v === 8 ? 'H-Stack' : 'Labeled+'}
                 </button>
               ))}
             </div>
@@ -1241,6 +1242,15 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
               )}
               {undoVariant === 8 && (
                 <UndoHorizontalStacked
+                  canUndo={undoHistory.canUndo}
+                  canRedo={undoHistory.canRedo}
+                  onUndo={() => handleUndoAction("undo")}
+                  onRedo={() => handleUndoAction("redo")}
+                  onAccept={() => { handleUndoAction("accept"); undoPanelCloseRef.current?.(); }}
+                />
+              )}
+              {undoVariant === 9 && (
+                <UndoLabeledChip
                   canUndo={undoHistory.canUndo}
                   canRedo={undoHistory.canRedo}
                   onUndo={() => handleUndoAction("undo")}

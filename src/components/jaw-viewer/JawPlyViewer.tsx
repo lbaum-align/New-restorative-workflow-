@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import upperJawUrl from '@/assets/3d-models/Upper Jaw .ply?url';
 import lowerJawUrl from '@/assets/3d-models/Lower Jaw.ply?url';
 import biteUrl from '@/assets/3d-models/Bite.ply?url';
+import hdrUrl from '@/assets/lebombo_1k.hdr?url';
 
 const STONE_COLOR = new THREE.Color(0xd4d0c8);
 
@@ -82,6 +83,14 @@ export default function JawPlyViewer({ jaw, monochrome = false }: JawPlyViewerPr
     <div className="w-full h-full">
       <Canvas
         camera={{ position: [0, 0, 14], fov: 35 }}
+        gl={{
+          antialias: true,
+          alpha: true,
+          preserveDrawingBuffer: true,
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 0.7,
+        }}
+        dpr={[1, 2]}
         style={{ width: '100%', height: '100%' }}
       >
         <ambientLight intensity={0.3} />
@@ -89,7 +98,7 @@ export default function JawPlyViewer({ jaw, monochrome = false }: JawPlyViewerPr
         <directionalLight position={[-5, 5, -5]} intensity={0.4} color="#f0f5ff" />
         <directionalLight position={[0, -3, 5]} intensity={0.3} />
         <pointLight position={[0, 10, 0]} intensity={0.2} color="#ffffff" />
-        <Environment preset="apartment" background={false} />
+        <Environment files={hdrUrl} background={false} />
 
         <Suspense fallback={null}>
           <Center>

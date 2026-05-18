@@ -3,6 +3,7 @@ import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import { OrbitControls, Center, Environment } from '@react-three/drei';
 import { PLYLoader } from 'three-stdlib';
 import * as THREE from 'three';
+import hdrUrl from '@/assets/lebombo_1k.hdr?url';
 import upperJawModel from '@/assets/3d-models/Upper Jaw .ply?url';
 
 const BASE_ROT_X = Math.PI * 0.6;
@@ -107,7 +108,7 @@ export default function CopilotScene({ onCameraChange, children }: CopilotSceneP
       <directionalLight position={[0, 5, -5]} intensity={0.2} />
       <pointLight position={[0, 10, 0]} intensity={0.2} color="#fff5e6" />
       <pointLight position={[3, 0, 3]} intensity={0.15} color="#e6f0ff" />
-      <Environment preset="apartment" background={false} />
+      <Environment files={hdrUrl} background={false} />
 
       <Center>
         <group ref={groupRef}>

@@ -11,18 +11,16 @@ interface UndoStackedProps {
 
 function UndoIcon() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <path d="M7 10C7 10 8.875 6 12.5 6C16.125 6 19 8.875 19 12.5C19 16.125 16.125 19 12.5 19C9.5 19 7 16.8 6.25 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M4.5 7.5L7 10L9.5 7.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+      <path d="M20 10H7.8149L11.4023 6.4141L10 5L4 11L10 17L11.4023 15.5854L7.8179 12H20C21.5913 12 23.1174 12.6321 24.2426 13.7574C25.3679 14.8826 26 16.4087 26 18C26 19.5913 25.3679 21.1174 24.2426 22.2426C23.1174 23.3679 21.5913 24 20 24H12V26H20C22.1217 26 24.1566 25.1571 25.6569 23.6569C27.1571 22.1566 28 20.1217 28 18C28 15.8783 27.1571 13.8434 25.6569 12.3431C24.1566 10.8429 22.1217 10 20 10Z" fill="currentColor"/>
     </svg>
   );
 }
 
 function RedoIcon() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <path d="M17 10C17 10 15.125 6 11.5 6C7.875 6 5 8.875 5 12.5C5 16.125 7.875 19 11.5 19C14.5 19 17 16.8 17.75 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M19.5 7.5L17 10L14.5 7.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+      <path d="M12 10H24.1851L20.5977 6.4141L22 5L28 11L22 17L20.5977 15.5854L24.1821 12H12C10.4087 12 8.88258 12.6321 7.75736 13.7574C6.63214 14.8826 6 16.4087 6 18C6 19.5913 6.63214 21.1174 7.75736 22.2426C8.88258 23.3679 10.4087 24 12 24H20V26H12C9.87827 26 7.84344 25.1571 6.34315 23.6569C4.84285 22.1566 4 20.1217 4 18C4 15.8783 4.84285 13.8434 6.34315 12.3431C7.84344 10.8429 9.87827 10 12 10Z" fill="currentColor"/>
     </svg>
   );
 }
@@ -97,9 +95,6 @@ export default function UndoStacked({
       >
         <RedoIcon />
       </button>
-
-      {/* Divider */}
-      <div className="h-px w-8 bg-[#E0E0E0]" />
 
       {/* Accept */}
       <AcceptButton onClick={onAccept} disabled={!canUndo && !canRedo} />

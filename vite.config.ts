@@ -18,7 +18,7 @@ function figmaAssetResolver() {
 
   export default defineConfig({
     plugins: [react(), tailwindcss(), figmaAssetResolver()],
-    assetsInclude: ['**/*.ply', '**/*.stl', '**/*.glb', '**/*.gltf'],
+    assetsInclude: ['**/*.ply', '**/*.stl', '**/*.glb', '**/*.gltf', '**/*.hdr'],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       alias: {

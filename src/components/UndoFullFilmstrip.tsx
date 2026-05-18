@@ -19,8 +19,7 @@ interface UndoFullFilmstripProps {
 function UndoArrowIcon() {
   return (
     <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-      <path d="M9 13C9 13 11.5 7 19 7C25.627 7 31 12.373 31 19C31 25.627 25.627 31 19 31C13.5 31 8.9 27.3 7.5 22" stroke="#3E3D40" strokeWidth="2.5" strokeLinecap="round"/>
-      <path d="M5 9L9 13L13 9" stroke="#3E3D40" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M20 10H7.8149L11.4023 6.4141L10 5L4 11L10 17L11.4023 15.5854L7.8179 12H20C21.5913 12 23.1174 12.6321 24.2426 13.7574C25.3679 14.8826 26 16.4087 26 18C26 19.5913 25.3679 21.1174 24.2426 22.2426C23.1174 23.3679 21.5913 24 20 24H12V26H20C22.1217 26 24.1566 25.1571 25.6569 23.6569C27.1571 22.1566 28 20.1217 28 18C28 15.8783 27.1571 13.8434 25.6569 12.3431C24.1566 10.8429 22.1217 10 20 10Z" fill="#3E3D40"/>
     </svg>
   );
 }
@@ -28,8 +27,7 @@ function UndoArrowIcon() {
 function RedoArrowIcon() {
   return (
     <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-      <path d="M23 13C23 13 20.5 7 13 7C6.373 7 1 12.373 1 19C1 25.627 6.373 31 13 31C18.5 31 23.1 27.3 24.5 22" stroke="#3E3D40" strokeWidth="2.5" strokeLinecap="round"/>
-      <path d="M27 9L23 13L19 9" stroke="#3E3D40" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M12 10H24.1851L20.5977 6.4141L22 5L28 11L22 17L20.5977 15.5854L24.1821 12H12C10.4087 12 8.88258 12.6321 7.75736 13.7574C6.63214 14.8826 6 16.4087 6 18C6 19.5913 6.63214 21.1174 7.75736 22.2426C8.88258 23.3679 10.4087 24 12 24H20V26H12C9.87827 26 7.84344 25.1571 6.34315 23.6569C4.84285 22.1566 4 20.1217 4 18C4 15.8783 4.84285 13.8434 6.34315 12.3431C7.84344 10.8429 9.87827 10 12 10Z" fill="#3E3D40"/>
     </svg>
   );
 }

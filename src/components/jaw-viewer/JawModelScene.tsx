@@ -2,6 +2,7 @@ import { OrbitControls, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import JawMesh from './JawMesh';
 import { jawModels } from './jawModelPaths';
+import hdrUrl from '@/assets/lebombo_1k.hdr?url';
 
 interface LayerState {
   upper: number;
@@ -78,7 +79,7 @@ export default function JawModelScene({
       <directionalLight position={[0, 5, -5]} intensity={0.2} />
       <pointLight position={[0, 10, 0]} intensity={0.2} color="#fff5e6" />
       <pointLight position={[3, 0, 3]} intensity={0.15} color="#e6f0ff" />
-      <Environment preset="apartment" background={false} />
+      <Environment files={hdrUrl} background={false} />
 
       {showUpper && (
         <group position={[0, 0, 0]}>

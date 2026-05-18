@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { color, font, space, radius, transition } from '../../design-system/tokens';
+import WandArrowCanvas from './WandArrowCanvas';
 import type {
   GuidanceState, ScanStage, FrameEdge, GuidanceDirection, ScanRegion, GuidanceMode,
 } from './types';
@@ -611,7 +612,7 @@ function GlowFrameOverlay({ guidance, pointerNDC, flashActive }: {
 // ════════════════════════════════════════════════════════════════════════════
 
 const DOF_KF = `
-  @keyframes dof-breathe     { 0%,100%{opacity:0.85} 50%{opacity:0.3} }
+  @keyframes dof-breathe     { 0%,100%{opacity:0.9;transform:translateZ(0px)} 50%{opacity:0.45;transform:translateZ(6px)} }
   @keyframes dof-slide-lr    { 0%{transform:translate(-50%,-50%) translateX(-20px)} 50%{transform:translate(-50%,-50%) translateX(20px)} 100%{transform:translate(-50%,-50%) translateX(-20px)} }
   @keyframes dof-slide-ud    { 0%{transform:translate(-50%,-50%) translateY(-16px)} 50%{transform:translate(-50%,-50%) translateY(16px)} 100%{transform:translate(-50%,-50%) translateY(-16px)} }
   @keyframes dof-scale-fb    { 0%{transform:translate(-50%,-50%) scale(0.88)} 50%{transform:translate(-50%,-50%) scale(1.12)} 100%{transform:translate(-50%,-50%) scale(0.88)} }
@@ -629,42 +630,44 @@ const DOF_KF = `
   @keyframes ring-osc        { 0%,100%{stroke-dashoffset:0} 50%{stroke-dashoffset:40} }
 `;
 
-// Blue gradient SVG defs
+// Minimal clinical SVG defs — clean single-color with subtle depth
 function BlueDefs() {
   return (
     <defs>
       <linearGradient id="gb-h" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#80D4F0"/><stop offset="50%" stopColor="#009ACE"/><stop offset="100%" stopColor="#007A9E"/>
+        <stop offset="0%" stopColor="rgba(0,154,206,0.3)"/><stop offset="100%" stopColor="#009ACE"/>
       </linearGradient>
       <linearGradient id="gb-v" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#80D4F0"/><stop offset="50%" stopColor="#009ACE"/><stop offset="100%" stopColor="#007A9E"/>
+        <stop offset="0%" stopColor="rgba(0,154,206,0.3)"/><stop offset="100%" stopColor="#009ACE"/>
       </linearGradient>
       <linearGradient id="gb-d" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#80D4F0"/><stop offset="100%" stopColor="#006080"/>
+        <stop offset="0%" stopColor="rgba(0,154,206,0.4)"/><stop offset="100%" stopColor="#009ACE"/>
       </linearGradient>
       <linearGradient id="gb-hl" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="rgba(255,255,255,0.4)"/><stop offset="100%" stopColor="rgba(255,255,255,0)"/>
+        <stop offset="0%" stopColor="rgba(255,255,255,0.5)"/><stop offset="100%" stopColor="rgba(255,255,255,0)"/>
       </linearGradient>
-      <radialGradient id="gb-r" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#40B8DB"/><stop offset="100%" stopColor="#006080"/>
+      <radialGradient id="gb-r" cx="40%" cy="35%" r="50%">
+        <stop offset="0%" stopColor="#7EDCF5"/><stop offset="100%" stopColor="#009ACE"/>
       </radialGradient>
     </defs>
   );
 }
 
-const BF = 'drop-shadow(0 2px 6px rgba(0,120,160,0.3))';
+const AC = '#009ACE';
+const BF = 'drop-shadow(0 1px 4px rgba(0,100,150,0.3))';
+const ARROW_TRANS = 'transition:transform 0.3s cubic-bezier(0.4,0,0.2,1),opacity 0.3s ease;';
+const P3D: React.CSSProperties = { transformStyle: 'preserve-3d' as const, transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease' };
 
-// ─── 3D SVG Arrows ───────────────────────────────────────────────────────────
+// ─── Minimal 3D Arrows (stroke-only, clinical) ─────────────────────────────
 
 function ArrowH({ dir, s = 56 }: { dir: 'left'|'right'; s?: number }) {
   if (!useContext(ShowArrowsContext)) return null;
   return (
     <svg width={s} height={s} viewBox="0 0 56 56" fill="none" style={{ transform: dir === 'left' ? 'scaleX(-1)' : undefined, filter: BF }}>
-      <BlueDefs/>
-      <rect x="8" y="22" width="28" height="12" rx="6" fill="url(#gb-h)"/>
-      <rect x="8" y="22" width="28" height="6" rx="6" fill="url(#gb-hl)"/>
-      <path d="M34 12 L52 28 L34 44Z" fill="url(#gb-h)"/>
-      <path d="M34 12 L52 28 L34 28Z" fill="url(#gb-hl)" opacity="0.5"/>
+      {/* Shaft line */}
+      <line x1="8" y1="28" x2="38" y2="28" stroke={AC} strokeWidth="2.5" strokeLinecap="round" opacity="0.85"/>
+      {/* Chevron head */}
+      <polyline points="36,20 50,28 36,36" stroke={AC} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
     </svg>
   );
 }
@@ -673,11 +676,10 @@ function ArrowV({ dir, s = 56 }: { dir: 'up'|'down'; s?: number }) {
   if (!useContext(ShowArrowsContext)) return null;
   return (
     <svg width={s} height={s} viewBox="0 0 56 56" fill="none" style={{ transform: dir === 'down' ? 'scaleY(-1)' : undefined, filter: BF }}>
-      <BlueDefs/>
-      <rect x="22" y="18" width="12" height="28" rx="6" fill="url(#gb-v)"/>
-      <rect x="22" y="18" width="6" height="28" rx="6" fill="url(#gb-hl)"/>
-      <path d="M12 20 L28 2 L44 20Z" fill="url(#gb-v)"/>
-      <path d="M12 20 L28 2 L28 20Z" fill="url(#gb-hl)" opacity="0.5"/>
+      {/* Shaft line */}
+      <line x1="28" y1="48" x2="28" y2="18" stroke={AC} strokeWidth="2.5" strokeLinecap="round" opacity="0.85"/>
+      {/* Chevron head */}
+      <polyline points="20,20 28,6 36,20" stroke={AC} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
     </svg>
   );
 }
@@ -687,12 +689,12 @@ function ArrowCurve({ s = 110 }: { s?: number }) {
   const h = Math.round(s * 0.55);
   return (
     <svg width={s} height={h} viewBox="0 0 110 60" fill="none" style={{ filter: BF }}>
-      <BlueDefs/>
-      <path d="M14 50 A 48 40 0 0 1 96 50" stroke="url(#gb-d)" strokeWidth="5" strokeLinecap="round" fill="none"/>
-      <path d="M16 48 A 46 38 0 0 1 94 48" stroke="url(#gb-hl)" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.5"/>
-      <path d="M92 50 L102 42 L96 58Z" fill="url(#gb-d)"/>
-      <path d="M92 50 L102 42 L97 50Z" fill="url(#gb-hl)" opacity="0.5"/>
-      <path d="M96 50 A 48 40 0 0 1 14 50" stroke="url(#gb-d)" strokeWidth="1.5" strokeDasharray="5 6" fill="none" opacity="0.15"/>
+      {/* Arc */}
+      <path d="M14 50 A 48 40 0 0 1 96 50" stroke={AC} strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.85"/>
+      {/* Chevron tip */}
+      <polyline points="86,40 100,48 90,56" stroke={AC} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+      {/* Start dot */}
+      <circle cx="14" cy="50" r="3" fill={AC} opacity="0.6"/>
     </svg>
   );
 }
@@ -701,12 +703,11 @@ function ArrowDepth({ s = 68 }: { s?: number }) {
   if (!useContext(ShowArrowsContext)) return null;
   return (
     <svg width={s} height={s} viewBox="0 0 68 68" fill="none" style={{ filter: BF }}>
-      <BlueDefs/>
-      <circle cx="34" cy="34" r="28" stroke="url(#gb-d)" strokeWidth="2" fill="none" opacity="0.2"/>
-      <circle cx="34" cy="34" r="17" stroke="url(#gb-d)" strokeWidth="2" fill="none" opacity="0.4"/>
+      {/* Ring */}
+      <circle cx="34" cy="34" r="22" stroke={AC} strokeWidth="2" fill="none" opacity="0.3"/>
+      {/* Center dot */}
       <circle cx="34" cy="34" r="5" fill="url(#gb-r)"/>
-      <circle cx="33" cy="33" r="2" fill="rgba(255,255,255,0.35)"/>
-      {[0,90,180,270].map(d=><g key={d} transform={`rotate(${d} 34 34)`}><path d="M34 3L30 9M34 3L38 9" stroke="url(#gb-v)" strokeWidth="2" strokeLinecap="round"/></g>)}
+      <BlueDefs/>
     </svg>
   );
 }
@@ -757,6 +758,7 @@ function DofFrame({ mode, flashActive, children, anim }: {
       position: 'absolute', top: '50%', left: '50%',
       width: 'clamp(220px, 20vw, 300px)', height: 'clamp(340px, 32vw, 450px)',
       transform: 'translate(-50%,-50%)', pointerEvents: 'none',
+      transformStyle: 'preserve-3d',
       border: `3px solid ${bc}`, borderRadius: '14px',
       boxShadow: glow, transition: 'border-color 0.2s, box-shadow 0.2s', animation: anim,
     }}>
@@ -771,6 +773,7 @@ function BareWrap({ mode: _mode, children }: { mode: string; children?: React.Re
       position: 'absolute', top: '50%', left: '50%',
       width: 'clamp(220px, 20vw, 300px)', height: 'clamp(340px, 32vw, 450px)',
       transform: 'translate(-50%,-50%)', pointerEvents: 'none',
+      transformStyle: 'preserve-3d',
     }}>
       {children}
     </div>
@@ -1000,12 +1003,12 @@ function GizmoOverlay({ g }: { g: GuidanceState }) {
 // ════════════════════════════════════════════════════════════════════════════
 
 const GHOST_KF = `
-  @keyframes ghost-float-lr  { 0%{transform:translate(calc(-50% + 30px),-50%)} 50%{transform:translate(calc(-50% - 30px),-50%)} 100%{transform:translate(calc(-50% + 30px),-50%)} }
-  @keyframes ghost-float-ud  { 0%{transform:translate(-50%,calc(-50% + 24px))} 50%{transform:translate(-50%,calc(-50% - 24px))} 100%{transform:translate(-50%,calc(-50% + 24px))} }
-  @keyframes ghost-float-fb  { 0%{transform:translate(-50%,-50%) scale(0.88)} 50%{transform:translate(-50%,-50%) scale(1.12)} 100%{transform:translate(-50%,-50%) scale(0.88)} }
-  @keyframes ghost-float-roll { 0%{transform:translate(-50%,-50%) rotate(-8deg)} 50%{transform:translate(-50%,-50%) rotate(8deg)} 100%{transform:translate(-50%,-50%) rotate(-8deg)} }
-  @keyframes ghost-float-pitch { 0%{transform:translate(-50%,-50%) perspective(400px) rotateX(-12deg)} 50%{transform:translate(-50%,-50%) perspective(400px) rotateX(12deg)} 100%{transform:translate(-50%,-50%) perspective(400px) rotateX(-12deg)} }
-  @keyframes ghost-float-yaw { 0%{transform:translate(-50%,-50%) perspective(400px) rotateY(-14deg)} 50%{transform:translate(-50%,-50%) perspective(400px) rotateY(14deg)} 100%{transform:translate(-50%,-50%) perspective(400px) rotateY(-14deg)} }
+  @keyframes ghost-float-lr  { 0%{transform:translate(calc(-50% + 38px),-50%) rotate(2deg);opacity:0.75} 50%{transform:translate(calc(-50% - 38px),-50%) rotate(-2deg);opacity:1} 100%{transform:translate(calc(-50% + 38px),-50%) rotate(2deg);opacity:0.75} }
+  @keyframes ghost-float-ud  { 0%{transform:translate(-50%,calc(-50% + 24px));opacity:0.75} 50%{transform:translate(-50%,calc(-50% - 24px));opacity:1} 100%{transform:translate(-50%,calc(-50% + 24px));opacity:0.75} }
+  @keyframes ghost-float-fb  { 0%{transform:translate(-50%,-50%);opacity:0.6} 50%{transform:translate(-50%,-50%);opacity:1} 100%{transform:translate(-50%,-50%);opacity:0.6} }
+  @keyframes ghost-float-roll { 0%{transform-origin:50% 70%;transform:translate(calc(-50% + 20px),-50%) rotate(-12deg);opacity:0.75} 50%{transform-origin:50% 70%;transform:translate(calc(-50% - 20px),-50%) rotate(12deg);opacity:1} 100%{transform-origin:50% 70%;transform:translate(calc(-50% + 20px),-50%) rotate(-12deg);opacity:0.75} }
+  @keyframes ghost-float-pitch { 0%{transform-origin:50% 70%;transform:translate(-50%,-50%) perspective(350px) rotateX(-16deg);opacity:0.75} 50%{transform-origin:50% 70%;transform:translate(-50%,-50%) perspective(350px) rotateX(16deg);opacity:1} 100%{transform-origin:50% 70%;transform:translate(-50%,-50%) perspective(350px) rotateX(-16deg);opacity:0.75} }
+  @keyframes ghost-float-yaw { 0%{transform-origin:50% 70%;transform:translate(calc(-50% + 18px),-50%) perspective(350px) rotateY(-18deg);opacity:0.75} 50%{transform-origin:50% 70%;transform:translate(calc(-50% - 18px),-50%) perspective(350px) rotateY(18deg);opacity:1} 100%{transform-origin:50% 70%;transform:translate(calc(-50% + 18px),-50%) perspective(350px) rotateY(-18deg);opacity:0.75} }
   @keyframes ghost-confirm  { 0%{box-shadow:0 0 0 0 rgba(22,163,74,0.5)} 70%{box-shadow:0 0 0 18px rgba(22,163,74,0)} 100%{box-shadow:0 0 0 0 rgba(22,163,74,0)} }
 `;
 
@@ -1054,9 +1057,10 @@ function GhostOverlay({ mode, g, f }: { mode: string; g: GuidanceState; f: boole
       }}>
         <div style={{
           width: '100%', height: '100%',
-          border: '2.5px dashed rgba(0,154,206,0.25)',
+          border: '3px dashed rgba(0,154,206,0.55)',
           borderRadius: '14px',
-          boxShadow: '0 0 14px 3px rgba(0,154,206,0.1)',
+          boxShadow: '0 0 18px 5px rgba(0,154,206,0.2), inset 0 0 12px 2px rgba(0,154,206,0.05)',
+          background: 'rgba(0,154,206,0.04)',
           transition: 'border-color 0.3s ease',
         }}>
         </div>
@@ -1541,23 +1545,25 @@ function ScanIndicatorOverlay({ guidance, containerSize, pointerNDC, flashActive
 // ════════════════════════════════════════════════════════════════════════════
 
 const WAND_KF = `
-  @keyframes wand-slide-lr  { 0%{transform:translate(-50%,-50%) translateX(-20px)} 50%{transform:translate(-50%,-50%) translateX(20px)} 100%{transform:translate(-50%,-50%) translateX(-20px)} }
-  @keyframes wand-slide-ud  { 0%{transform:translate(-50%,-50%) translateY(-16px)} 50%{transform:translate(-50%,-50%) translateY(16px)} 100%{transform:translate(-50%,-50%) translateY(-16px)} }
-  @keyframes wand-scale-fb  { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) scale(0.88)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) scale(1.12)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) scale(0.88)} }
-  @keyframes wand-roll      { 0%{transform:translate(-50%,-29.3%) rotate(0deg)} 100%{transform:translate(-50%,-29.3%) rotate(360deg)} }
-  @keyframes wand-pitch     { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(400px) rotateX(-14deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(400px) rotateX(14deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(400px) rotateX(-14deg)} }
-  @keyframes wand-yaw       { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(400px) rotateY(-16deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(400px) rotateY(16deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(400px) rotateY(-16deg)} }
+  @keyframes wand-slide-lr  { 0%{transform:translate(-50%,-50%) translateX(-28px) rotate(2deg)} 50%{transform:translate(-50%,-50%) translateX(28px) rotate(-2deg)} 100%{transform:translate(-50%,-50%) translateX(-28px) rotate(2deg)} }
+  @keyframes wand-slide-ud  { 0%{transform:translate(-50%,-50%) translateY(-20px)} 50%{transform:translate(-50%,-50%) translateY(20px)} 100%{transform:translate(-50%,-50%) translateY(-20px)} }
+  @keyframes wand-scale-fb  { 0%{transform-origin:52.4% 80%;transform:translate(-50%,-29.3%);opacity:0.6} 50%{transform-origin:52.4% 80%;transform:translate(-50%,-29.3%);opacity:1} 100%{transform-origin:52.4% 80%;transform:translate(-50%,-29.3%);opacity:0.6} }
+  @keyframes wand-roll      { 0%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 20px),-29.3%) rotate(-12deg)} 50%{transform-origin:52.4% 70%;transform:translate(calc(-50% - 20px),-29.3%) rotate(12deg)} 100%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 20px),-29.3%) rotate(-12deg)} }
+  @keyframes wand-pitch     { 0%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(350px) rotateX(-16deg)} 50%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(350px) rotateX(16deg)} 100%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(350px) rotateX(-16deg)} }
+  @keyframes wand-yaw       { 0%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 18px),-29.3%) perspective(350px) rotateY(-18deg)} 50%{transform-origin:52.4% 70%;transform:translate(calc(-50% - 18px),-29.3%) perspective(350px) rotateY(18deg)} 100%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 18px),-29.3%) perspective(350px) rotateY(-18deg)} }
 `;
 
-function WandSilhouette({ strokeColor, opacity, dashed }: { strokeColor: string; opacity: number; dashed?: boolean }) {
-  const dash = dashed ? '8 5' : undefined;
+function WandSilhouette({ strokeColor, opacity, dashed, ghost }: { strokeColor: string; opacity: number; dashed?: boolean; ghost?: boolean }) {
+  const dash = dashed ? '10 6' : undefined;
+  const sw = ghost ? '3.5' : '2.72527';
+  const fillColor = ghost ? 'rgba(0,154,206,0.06)' : 'none';
   return (
-    <svg width="100%" height="100%" viewBox="0 0 251 561" fill="none" preserveAspectRatio="xMidYMid meet" style={{ opacity }}>
+    <svg width="100%" height="100%" viewBox="0 0 251 561" fill="none" preserveAspectRatio="xMidYMid meet" style={{ opacity, filter: ghost ? 'drop-shadow(0 0 8px rgba(0,154,206,0.4))' : undefined }}>
       <path
         d="M249.361 560.044L232.599 25.1221C232.185 11.8815 221.331 1.36279 208.084 1.36279H53.8173C40.7683 1.36279 30.0037 11.5798 29.3232 24.6111L1.36084 560.044"
-        stroke={strokeColor} strokeWidth="2.72527" strokeDasharray={dash}
+        stroke={strokeColor} strokeWidth={sw} strokeDasharray={dash} fill={fillColor}
       />
-      <rect x="49.7235" y="30.7254" width="163.516" height="267.077" stroke={strokeColor} strokeWidth="2.72527" strokeDasharray={dash} />
+      <rect x="49.7235" y="30.7254" width="163.516" height="267.077" stroke={strokeColor} strokeWidth={sw} strokeDasharray={dash} fill={fillColor} rx="4" />
     </svg>
   );
 }
@@ -1576,13 +1582,15 @@ const WRECT_CY = '29.3%';  // (30.7254 + 267.077/2) / 561
 function WandFrame({ mode, flashActive, children, anim }: {
   mode: string; flashActive: boolean; children?: React.ReactNode; anim?: string;
 }) {
-  const bc = flashActive ? '#16A34A' : 'rgba(255,255,255,0.65)';
+  const bc = flashActive ? '#16A34A' : 'rgba(255,255,255,0.85)';
   return (
     <div style={{
       position: 'absolute', top: '50%', left: '50%',
       width: 'clamp(140px, 14vw, 200px)', height: 'clamp(310px, 31vw, 450px)',
       transform: 'translate(-50%,-29.3%)', pointerEvents: 'none',
+      transformStyle: 'preserve-3d',
       animation: anim,
+      filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.3))',
     }}>
       <WandSilhouette strokeColor={bc} opacity={1} />
       {children}
@@ -1683,20 +1691,20 @@ function WandYaw({ g, f }: { g: GuidanceState; f: boolean }) {
 // ════════════════════════════════════════════════════════════════════════════
 
 const GWAND_KF = `
-  @keyframes gwand-float-lr    { 0%{transform:translate(calc(-50% + 34px),-29.3%)} 50%{transform:translate(calc(-50% - 34px),-29.3%)} 100%{transform:translate(calc(-50% + 34px),-29.3%)} }
-  @keyframes gwand-float-ud    { 0%{transform:translate(-50%,calc(-29.3% + 26px))} 50%{transform:translate(-50%,calc(-29.3% - 26px))} 100%{transform:translate(-50%,calc(-29.3% + 26px))} }
-  @keyframes gwand-float-fb    { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) scale(0.85)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) scale(1.15)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) scale(0.85)} }
-  @keyframes gwand-float-roll  { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) rotate(-10deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) rotate(10deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) rotate(-10deg)} }
-  @keyframes gwand-float-pitch { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(400px) rotateX(-14deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(400px) rotateX(14deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(400px) rotateX(-14deg)} }
-  @keyframes gwand-float-yaw   { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(400px) rotateY(-16deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(400px) rotateY(16deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(400px) rotateY(-16deg)} }
-  @keyframes gwand-float-tilt3d { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(250px) rotateY(-45deg) rotateX(8deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(250px) rotateY(45deg) rotateX(-8deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(250px) rotateY(-45deg) rotateX(8deg)} }
-  @keyframes gwand-float-spin3d { 0%{transform:translate(-50%,-29.3%) rotate(0deg) translateX(44px) rotate(0deg)} 100%{transform:translate(-50%,-29.3%) rotate(360deg) translateX(44px) rotate(-360deg)} }
-  @keyframes gwand-float-orbit3d { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateY(0deg) rotateX(10deg)} 25%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateY(90deg) rotateX(-5deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateY(180deg) rotateX(10deg)} 75%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateY(270deg) rotateX(-5deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateY(360deg) rotateX(10deg)} }
-  @keyframes gwand-float-nod3d { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(350px) rotateX(-20deg) scale(0.9)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(350px) rotateX(20deg) scale(1.1)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(350px) rotateX(-20deg) scale(0.9)} }
-  @keyframes gwand-float-sweep3d { 0%{transform-origin:52.4% 29.3%;transform:translate(calc(-50% + 30px),-29.3%) perspective(350px) rotateY(-20deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(calc(-50% - 30px),-29.3%) perspective(350px) rotateY(20deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(calc(-50% + 30px),-29.3%) perspective(350px) rotateY(-20deg)} }
-  @keyframes gwand-float-rock3d { 0%{transform-origin:52.4% 29.3%;transform:translate(calc(-50% + 25px),-29.3%) rotate(-12deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(calc(-50% - 25px),-29.3%) rotate(12deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(calc(-50% + 25px),-29.3%) rotate(-12deg)} }
-  @keyframes gwand-float-tumble3d { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(-15deg) rotate(-10deg)} 25%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(15deg) rotate(0deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(-15deg) rotate(10deg)} 75%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(15deg) rotate(0deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(-15deg) rotate(-10deg)} }
-  @keyframes gwand-float-wobble3d { 0%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(8deg) rotateY(-12deg)} 25%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(-6deg) rotateY(8deg)} 50%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(8deg) rotateY(12deg)} 75%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(-6deg) rotateY(-8deg)} 100%{transform-origin:52.4% 29.3%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(8deg) rotateY(-12deg)} }
+  @keyframes gwand-float-lr    { 0%{transform:translate(calc(-50% + 38px),-29.3%) rotate(2deg)} 50%{transform:translate(calc(-50% - 38px),-29.3%) rotate(-2deg)} 100%{transform:translate(calc(-50% + 38px),-29.3%) rotate(2deg)} }
+  @keyframes gwand-float-ud    { 0%{transform:translate(-50%,calc(-29.3% + 24px))} 50%{transform:translate(-50%,calc(-29.3% - 24px))} 100%{transform:translate(-50%,calc(-29.3% + 24px))} }
+  @keyframes gwand-float-fb    { 0%{transform:translate(-50%,-29.3%);opacity:0.6} 50%{transform:translate(-50%,-29.3%);opacity:1} 100%{transform:translate(-50%,-29.3%);opacity:0.6} }
+  @keyframes gwand-float-roll  { 0%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 20px),-29.3%) rotate(-12deg)} 50%{transform-origin:52.4% 70%;transform:translate(calc(-50% - 20px),-29.3%) rotate(12deg)} 100%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 20px),-29.3%) rotate(-12deg)} }
+  @keyframes gwand-float-pitch { 0%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(350px) rotateX(-16deg)} 50%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(350px) rotateX(16deg)} 100%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(350px) rotateX(-16deg)} }
+  @keyframes gwand-float-yaw   { 0%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 18px),-29.3%) perspective(350px) rotateY(-18deg)} 50%{transform-origin:52.4% 70%;transform:translate(calc(-50% - 18px),-29.3%) perspective(350px) rotateY(18deg)} 100%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 18px),-29.3%) perspective(350px) rotateY(-18deg)} }
+  @keyframes gwand-float-tilt3d { 0%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 25px),-29.3%) perspective(250px) rotateY(-35deg) rotateX(6deg)} 50%{transform-origin:52.4% 70%;transform:translate(calc(-50% - 25px),-29.3%) perspective(250px) rotateY(35deg) rotateX(-6deg)} 100%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 25px),-29.3%) perspective(250px) rotateY(-35deg) rotateX(6deg)} }
+  @keyframes gwand-float-spin3d { 0%{transform:translate(-50%,-29.3%) rotate(0deg) translateX(38px) rotate(0deg)} 100%{transform:translate(-50%,-29.3%) rotate(360deg) translateX(38px) rotate(-360deg)} }
+  @keyframes gwand-float-orbit3d { 0%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(300px) rotateY(0deg) rotateX(8deg)} 25%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(300px) rotateY(90deg) rotateX(-4deg)} 50%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(300px) rotateY(180deg) rotateX(8deg)} 75%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(300px) rotateY(270deg) rotateX(-4deg)} 100%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(300px) rotateY(360deg) rotateX(8deg)} }
+  @keyframes gwand-float-nod3d { 0%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(350px) rotateX(-18deg)} 50%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(350px) rotateX(18deg)} 100%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(350px) rotateX(-18deg)} }
+  @keyframes gwand-float-sweep3d { 0%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 30px),-29.3%) perspective(350px) rotateY(-18deg) rotate(-3deg)} 50%{transform-origin:52.4% 70%;transform:translate(calc(-50% - 30px),-29.3%) perspective(350px) rotateY(18deg) rotate(3deg)} 100%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 30px),-29.3%) perspective(350px) rotateY(-18deg) rotate(-3deg)} }
+  @keyframes gwand-float-rock3d { 0%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 20px),-29.3%) rotate(-12deg)} 50%{transform-origin:52.4% 70%;transform:translate(calc(-50% - 20px),-29.3%) rotate(12deg)} 100%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 20px),-29.3%) rotate(-12deg)} }
+  @keyframes gwand-float-tumble3d { 0%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 14px),-29.3%) perspective(300px) rotateX(-14deg) rotate(-10deg)} 25%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(14deg) rotate(0deg)} 50%{transform-origin:52.4% 70%;transform:translate(calc(-50% - 14px),-29.3%) perspective(300px) rotateX(-14deg) rotate(10deg)} 75%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(14deg) rotate(0deg)} 100%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 14px),-29.3%) perspective(300px) rotateX(-14deg) rotate(-10deg)} }
+  @keyframes gwand-float-wobble3d { 0%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 10px),-29.3%) perspective(300px) rotateX(8deg) rotateY(-12deg)} 25%{transform-origin:52.4% 70%;transform:translate(calc(-50% - 10px),-29.3%) perspective(300px) rotateX(-6deg) rotateY(8deg)} 50%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 10px),-29.3%) perspective(300px) rotateX(8deg) rotateY(12deg)} 75%{transform-origin:52.4% 70%;transform:translate(calc(-50% - 10px),-29.3%) perspective(300px) rotateX(-6deg) rotateY(-8deg)} 100%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 10px),-29.3%) perspective(300px) rotateX(8deg) rotateY(-12deg)} }
 `;
 
 const GWAND_ANIM: Record<string, string> = {
@@ -1753,63 +1761,63 @@ const GWAND_LABELS: Record<string, string> = {
 };
 
 /** Just the center rectangle from the wand SVG — same viewBox so it aligns perfectly with the full wand */
-function WandScreenRect({ strokeColor, opacity, dashed }: { strokeColor: string; opacity: number; dashed?: boolean }) {
+function WandScreenRect({ strokeColor, opacity, dashed, ghost }: { strokeColor: string; opacity: number; dashed?: boolean; ghost?: boolean }) {
   return (
-    <svg width="100%" height="100%" viewBox="0 0 251 561" fill="none" preserveAspectRatio="xMidYMid meet" style={{ opacity }}>
+    <svg width="100%" height="100%" viewBox="0 0 251 561" fill="none" preserveAspectRatio="xMidYMid meet" style={{ opacity, filter: ghost ? 'drop-shadow(0 0 8px rgba(0,154,206,0.4))' : undefined }}>
       <rect
         x="49.7235" y="30.7254" width="163.516" height="267.077"
-        stroke={strokeColor} strokeWidth="2.72527"
-        strokeDasharray={dashed ? '8 5' : undefined}
-        fill="none"
+        stroke={strokeColor} strokeWidth={ghost ? '3.5' : '2.72527'}
+        strokeDasharray={dashed ? '10 6' : undefined}
+        fill={ghost ? 'rgba(0,154,206,0.06)' : 'none'}
+        rx="4"
       />
     </svg>
   );
 }
 
 /** Arrows placed around the stationary wand — positioned at the wand rect center */
-function GWandArrows({ mode }: { mode: string }) {
+function GWandArrows({ mode: _mode }: { mode: string }) {
+  // SVG arrows removed — 3D mesh arrows render inside the R3F Canvas via GuidanceArrows3D
+  return null;
+}
+
+function _GWandArrows_UNUSED({ mode }: { mode: string }) {
   // Rotation modes — show circular rotation arrows + spinning ring
   if (mode === 'rot-cw' || mode === 'rot-ccw' || mode === 'rot-tilt') {
     const isTilt = mode === 'rot-tilt';
     const isCCW = mode === 'rot-ccw';
     return (
       <>
-        {/* Circular rotation arrow */}
+        {/* Circular rotation arrow — minimal */}
         <div style={{
-          position:'absolute', top:WRECT_CY, left:WRECT_CX,
+          ...P3D, position:'absolute', top:WRECT_CY, left:WRECT_CX,
           width: 140, height: 140,
           transform: `translate(-50%,-50%)${isCCW ? ' scaleX(-1)' : ''}`,
-          animation: 'dof-breathe 2s ease-in-out infinite',
+          animation: 'dof-breathe 2.5s ease-in-out infinite',
         }}>
           <svg width="140" height="140" viewBox="0 0 140 140" fill="none" style={{ filter: BF }}>
-            <BlueDefs/>
-            {/* 270° arc */}
-            <path
-              d="M70 10 A 60 60 0 1 1 10 70"
-              stroke="url(#gb-d)" strokeWidth="3.5" fill="none" strokeLinecap="round"
-              strokeDasharray={isTilt ? '8 6' : 'none'}
-            />
-            {/* Arrowhead at end of arc */}
-            <polygon points="10,70 20,58 4,58" fill="url(#gb-d)" />
-            {/* Small starting dot */}
-            <circle cx="70" cy="10" r="4" fill="url(#gb-r)" />
+            {/* Arc */}
+            <path d="M70 10 A 60 60 0 1 1 10 70" stroke={AC} strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.85" strokeDasharray={isTilt ? '8 6' : 'none'}/>
+            {/* Chevron tip */}
+            <polyline points="18,58 8,70 22,68" stroke={AC} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            {/* Start dot */}
+            <circle cx="70" cy="10" r="3" fill={AC} opacity="0.5"/>
           </svg>
         </div>
 
-        {/* Center crosshair ring */}
+        {/* Center crosshair — minimal */}
         <div style={{
-          position:'absolute', top:WRECT_CY, left:WRECT_CX,
+          ...P3D, position:'absolute', top:WRECT_CY, left:WRECT_CX,
           width:50, height:50,
           animation: isTilt ? undefined : `wand-roll 4s linear infinite${isCCW ? ' reverse' : ''}`,
         }}>
           <svg width="50" height="50" viewBox="0 0 50 50" fill="none" style={{ filter: BF }}>
-            <BlueDefs/>
-            <circle cx="25" cy="25" r="20" stroke="url(#gb-d)" strokeWidth="1.5" opacity="0.25" fill="none"/>
-            <line x1="25" y1="5" x2="25" y2="15" stroke="url(#gb-v)" strokeWidth="2" strokeLinecap="round"/>
-            <line x1="25" y1="35" x2="25" y2="45" stroke="url(#gb-v)" strokeWidth="2" strokeLinecap="round"/>
-            <line x1="5" y1="25" x2="15" y2="25" stroke="url(#gb-h)" strokeWidth="2" strokeLinecap="round"/>
-            <line x1="35" y1="25" x2="45" y2="25" stroke="url(#gb-h)" strokeWidth="2" strokeLinecap="round"/>
-            <circle cx="25" cy="25" r="3" fill="url(#gb-r)"/>
+            <circle cx="25" cy="25" r="18" stroke={AC} strokeWidth="1.5" opacity="0.2" fill="none"/>
+            <line x1="25" y1="7" x2="25" y2="15" stroke={AC} strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+            <line x1="25" y1="35" x2="25" y2="43" stroke={AC} strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+            <line x1="7" y1="25" x2="15" y2="25" stroke={AC} strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+            <line x1="35" y1="25" x2="43" y2="25" stroke={AC} strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+            <circle cx="25" cy="25" r="2.5" fill={AC} opacity="0.5"/>
           </svg>
         </div>
       </>
@@ -1819,102 +1827,92 @@ function GWandArrows({ mode }: { mode: string }) {
   const variant = mode.replace(/^(?:g|bg|fg|fag)wand-/, '');
   if (variant === 'lr') return (
     <>
-      <div style={{ position:'absolute',left:-64,top:WRECT_CY,transform:'translateY(-50%)',animation:'dof-breathe 2s ease-in-out infinite' }}><ArrowH dir="left"/></div>
-      <div style={{ position:'absolute',right:-64,top:WRECT_CY,transform:'translateY(-50%)',animation:'dof-breathe 2s ease-in-out infinite' }}><ArrowH dir="right"/></div>
+      <div style={{ ...P3D, position:'absolute',left:-64,top:WRECT_CY,transform:'translateY(-50%)',animation:'dof-breathe 2.5s ease-in-out infinite' }}><ArrowH dir="left"/></div>
+      <div style={{ ...P3D, position:'absolute',right:-64,top:WRECT_CY,transform:'translateY(-50%)',animation:'dof-breathe 2.5s ease-in-out infinite' }}><ArrowH dir="right"/></div>
     </>
   );
   if (variant === 'ud') return (
     <>
-      <div style={{ position:'absolute',top:-64,left:WRECT_CX,transform:'translateX(-50%)',animation:'dof-breathe 2s ease-in-out infinite' }}><ArrowV dir="up"/></div>
-      <div style={{ position:'absolute',bottom:-64,left:WRECT_CX,transform:'translateX(-50%)',animation:'dof-breathe 2s ease-in-out infinite' }}><ArrowV dir="down"/></div>
+      <div style={{ ...P3D, position:'absolute',top:-64,left:WRECT_CX,transform:'translateX(-50%)',animation:'dof-breathe 2.5s ease-in-out infinite' }}><ArrowV dir="up"/></div>
+      <div style={{ ...P3D, position:'absolute',bottom:-64,left:WRECT_CX,transform:'translateX(-50%)',animation:'dof-breathe 2.5s ease-in-out infinite' }}><ArrowV dir="down"/></div>
     </>
   );
   if (variant === 'fb') return (
-    <div style={{ position:'absolute',top:WRECT_CY,left:WRECT_CX,transform:'translate(-50%,-50%)',animation:'dof-breathe 2s ease-in-out infinite' }}><ArrowDepth s={68}/></div>
+    <div style={{ ...P3D, position:'absolute',top:WRECT_CY,left:WRECT_CX,transform:'translate(-50%,-50%)',animation:'dof-breathe 2.5s ease-in-out infinite' }}><ArrowDepth s={68}/></div>
   );
   if (variant === 'roll') return (
     <>
-      <div style={{ position:'absolute',top:-68,left:WRECT_CX,transform:'translateX(-50%)',animation:'dof-breathe 2s ease-in-out infinite' }}><ArrowCurve s={110}/></div>
-      <div style={{ position:'absolute',top:WRECT_CY,left:WRECT_CX,width:70,height:70,animation:'wand-roll 4s linear infinite' }}>
+      <div style={{ ...P3D, position:'absolute',top:-68,left:WRECT_CX,transform:'translateX(-50%)',animation:'dof-breathe 2.5s ease-in-out infinite' }}><ArrowCurve s={110}/></div>
+      <div style={{ ...P3D, position:'absolute',top:WRECT_CY,left:WRECT_CX,width:70,height:70,animation:'wand-roll 4s linear infinite' }}>
         <svg width="70" height="70" viewBox="0 0 70 70" fill="none" style={{ filter:BF }}>
-          <BlueDefs/><circle cx="35" cy="35" r="28" stroke="url(#gb-d)" strokeWidth="2" opacity="0.25" fill="none"/>
-          <line x1="35" y1="7" x2="35" y2="20" stroke="url(#gb-v)" strokeWidth="2.5" strokeLinecap="round"/>
-          <line x1="35" y1="50" x2="35" y2="63" stroke="url(#gb-v)" strokeWidth="2.5" strokeLinecap="round"/>
-          <line x1="7" y1="35" x2="20" y2="35" stroke="url(#gb-h)" strokeWidth="2.5" strokeLinecap="round"/>
-          <line x1="50" y1="35" x2="63" y2="35" stroke="url(#gb-h)" strokeWidth="2.5" strokeLinecap="round"/>
-          <circle cx="35" cy="35" r="3" fill="url(#gb-r)"/>
+          <circle cx="35" cy="35" r="26" stroke={AC} strokeWidth="1.5" opacity="0.25" fill="none"/>
+          <line x1="35" y1="9" x2="35" y2="19" stroke={AC} strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
+          <line x1="35" y1="51" x2="35" y2="61" stroke={AC} strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
+          <line x1="9" y1="35" x2="19" y2="35" stroke={AC} strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
+          <line x1="51" y1="35" x2="61" y2="35" stroke={AC} strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
+          <circle cx="35" cy="35" r="3" fill={AC} opacity="0.5"/>
         </svg>
       </div>
     </>
   );
   if (variant === 'pitch') return (
     <>
-      <div style={{ position:'absolute',right:-68,top:WRECT_CY,transform:'translateY(-50%) rotate(90deg)',animation:'dof-breathe 2s ease-in-out infinite' }}><ArrowCurve s={100}/></div>
-      <div style={{ position:'absolute',left:-68,top:WRECT_CY,transform:'translateY(-50%) rotate(-90deg) scaleX(-1)',animation:'dof-breathe 2s ease-in-out infinite',animationDelay:'1s',opacity:0.35 }}><ArrowCurve s={80}/></div>
+      <div style={{ ...P3D, position:'absolute',right:-68,top:WRECT_CY,transform:'translateY(-50%) rotate(90deg)',animation:'dof-breathe 2.5s ease-in-out infinite' }}><ArrowCurve s={100}/></div>
+      <div style={{ ...P3D, position:'absolute',left:-68,top:WRECT_CY,transform:'translateY(-50%) rotate(-90deg) scaleX(-1)',animation:'dof-breathe 2.5s ease-in-out infinite',animationDelay:'1s',opacity:0.3 }}><ArrowCurve s={80}/></div>
     </>
   );
   if (variant === 'yaw') return (
     <>
-      <div style={{ position:'absolute',top:-68,left:WRECT_CX,transform:'translateX(-50%)',animation:'dof-breathe 2s ease-in-out infinite' }}><ArrowCurve s={120}/></div>
-      <div style={{ position:'absolute',bottom:-68,left:WRECT_CX,transform:'translateX(-50%) scaleY(-1)',animation:'dof-breathe 2s ease-in-out infinite',animationDelay:'1s',opacity:0.35 }}><ArrowCurve s={100}/></div>
+      <div style={{ ...P3D, position:'absolute',top:-68,left:WRECT_CX,transform:'translateX(-50%)',animation:'dof-breathe 2.5s ease-in-out infinite' }}><ArrowCurve s={120}/></div>
+      <div style={{ ...P3D, position:'absolute',bottom:-68,left:WRECT_CX,transform:'translateX(-50%) scaleY(-1)',animation:'dof-breathe 2.5s ease-in-out infinite',animationDelay:'1s',opacity:0.3 }}><ArrowCurve s={100}/></div>
     </>
   );
   // 3D Tilt — curved tilt arc only (no left/right arrows)
   if (variant === 'tilt3d') return (
     <div style={{ position:'absolute',top:-72,left:WRECT_CX,transform:'translateX(-50%) perspective(200px) rotateX(20deg)',animation:'dof-breathe 2s ease-in-out infinite' }}><ArrowCurve s={140}/></div>
   );
-  // 3D Spin — rotation ring + crosshair positioned at the top of the wand silhouette, in perspective
+  // 3D Spin — minimal rotation ring + crosshair
   if (variant === 'spin3d') return (
     <div style={{
-      position:'absolute', top:0, left:WRECT_CX,
+      ...P3D, position:'absolute', top:0, left:WRECT_CX,
       transform: 'translate(-50%, -10%) perspective(300px) rotateX(15deg)',
       pointerEvents:'none',
     }}>
-      {/* Rotation ring */}
-      <div style={{
-        width: 140, height: 140, position:'relative',
-        animation: 'dof-breathe 2s ease-in-out infinite',
-      }}>
+      <div style={{ ...P3D, width: 140, height: 140, position:'relative', animation: 'dof-breathe 2.5s ease-in-out infinite' }}>
         <svg width="140" height="140" viewBox="0 0 140 140" fill="none" style={{ filter: BF }}>
-          <BlueDefs/>
-          <path d="M70 8 A 62 62 0 1 1 8 70" stroke="url(#gb-d)" strokeWidth="3.5" fill="none" strokeLinecap="round"/>
-          <polygon points="8,70 20,56 2,56" fill="url(#gb-d)" />
-          <circle cx="70" cy="8" r="4" fill="url(#gb-r)" />
+          <path d="M70 8 A 62 62 0 1 1 8 70" stroke={AC} strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.85"/>
+          <polyline points="16,58 6,70 20,68" stroke={AC} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+          <circle cx="70" cy="8" r="3" fill={AC} opacity="0.5" />
         </svg>
-        {/* Spinning crosshair in center of ring */}
         <div style={{
-          position:'absolute', top:'50%', left:'50%',
-          width:48, height:48,
-          transform:'translate(-50%,-50%)',
-          animation: 'wand-roll 4s linear infinite',
+          ...P3D, position:'absolute', top:'50%', left:'50%', width:48, height:48,
+          transform:'translate(-50%,-50%)', animation: 'wand-roll 4s linear infinite',
         }}>
           <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style={{ filter: BF }}>
-            <BlueDefs/>
-            <circle cx="24" cy="24" r="18" stroke="url(#gb-d)" strokeWidth="1.5" opacity="0.2" fill="none"/>
-            <line x1="24" y1="6" x2="24" y2="14" stroke="url(#gb-v)" strokeWidth="2" strokeLinecap="round"/>
-            <line x1="24" y1="34" x2="24" y2="42" stroke="url(#gb-v)" strokeWidth="2" strokeLinecap="round"/>
-            <line x1="6" y1="24" x2="14" y2="24" stroke="url(#gb-h)" strokeWidth="2" strokeLinecap="round"/>
-            <line x1="34" y1="24" x2="42" y2="24" stroke="url(#gb-h)" strokeWidth="2" strokeLinecap="round"/>
-            <circle cx="24" cy="24" r="3" fill="url(#gb-r)"/>
+            <circle cx="24" cy="24" r="16" stroke={AC} strokeWidth="1.5" opacity="0.2" fill="none"/>
+            <line x1="24" y1="8" x2="24" y2="14" stroke={AC} strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+            <line x1="24" y1="34" x2="24" y2="40" stroke={AC} strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+            <line x1="8" y1="24" x2="14" y2="24" stroke={AC} strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+            <line x1="34" y1="24" x2="40" y2="24" stroke={AC} strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+            <circle cx="24" cy="24" r="2.5" fill={AC} opacity="0.5"/>
           </svg>
         </div>
       </div>
     </div>
   );
-  // 3D Orbit — tilted orbit ring (full circumferential)
+  // 3D Orbit — minimal tilted ring
   if (variant === 'orbit3d') return (
     <div style={{
-      position:'absolute', top:0, left:WRECT_CX,
+      ...P3D, position:'absolute', top:0, left:WRECT_CX,
       transform: 'translate(-50%, -10%) perspective(250px) rotateX(25deg)',
       pointerEvents:'none',
     }}>
-      <div style={{ width: 150, height: 150, position:'relative', animation: 'dof-breathe 2s ease-in-out infinite' }}>
+      <div style={{ ...P3D, width: 150, height: 150, position:'relative', animation: 'dof-breathe 2.5s ease-in-out infinite' }}>
         <svg width="150" height="150" viewBox="0 0 150 150" fill="none" style={{ filter: BF }}>
-          <BlueDefs/>
-          <ellipse cx="75" cy="75" rx="65" ry="45" stroke="url(#gb-d)" strokeWidth="3" fill="none" strokeLinecap="round" strokeDasharray="10 6"/>
-          <path d="M75 10 A 65 65 0 1 1 10 75" stroke="url(#gb-d)" strokeWidth="3.5" fill="none" strokeLinecap="round"/>
-          <polygon points="10,75 22,62 4,62" fill="url(#gb-d)" />
-          <circle cx="75" cy="10" r="4" fill="url(#gb-r)" />
+          <ellipse cx="75" cy="75" rx="65" ry="45" stroke={AC} strokeWidth="2" fill="none" strokeLinecap="round" strokeDasharray="10 6" opacity="0.4"/>
+          <path d="M75 10 A 65 65 0 1 1 10 75" stroke={AC} strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.85"/>
+          <polyline points="18,62 8,75 22,73" stroke={AC} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+          <circle cx="75" cy="10" r="3" fill={AC} opacity="0.5" />
         </svg>
       </div>
     </div>
@@ -2053,17 +2051,19 @@ function keyDirStyle(mode: string, dir: -1 | 0 | 1): React.CSSProperties | null 
   return null;
 }
 
-function GhostWandOverlay({ mode, g, f, showArrows = true, ghostFull = false, wandOffset = { x: 0, y: 0 }, hideTopBar = false }: {
+function GhostWandOverlay({ mode, g, f, showArrows: showArrowsProp = true, ghostFull = false, wandOffset = { x: 0, y: 0 }, hideTopBar = false }: {
   mode: string; g: GuidanceState; f: boolean; showArrows?: boolean; ghostFull?: boolean;
   wandOffset?: { x: number; y: number };
   hideTopBar?: boolean;
 }) {
   const { ghostMain, syncMain, keyDir } = useContext(GhostMainContext);
+  const globalShowArrows = useContext(ShowArrowsContext);
+  const showArrows = showArrowsProp && globalShowArrows;
   const pct = Math.round(g.coveragePercent * 100);
   const isScanning = g.phase === 'scanning';
   const ghostAnim = GWAND_ANIM[mode] ?? 'none';
 
-  const wandColor = f ? '#16A34A' : isScanning ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.65)';
+  const wandColor = f ? '#16A34A' : isScanning ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.8)';
 
   const wandW = 'clamp(140px, 14vw, 200px)';
   const wandH = 'clamp(310px, 31vw, 450px)';
@@ -2081,18 +2081,20 @@ function GhostWandOverlay({ mode, g, f, showArrows = true, ghostFull = false, wa
         position: 'absolute', inset: 0, pointerEvents: 'none',
         transform: `translate(${wandOffset.x}px, ${wandOffset.y}px)`,
       }}>
-        {/* Ghost — full wand or just the center rect */}
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%',
-          width: wandW, height: wandH,
-          pointerEvents: 'none',
-          animation: ghostAnim,
-        }}>
-          {ghostFull
-            ? <WandSilhouette strokeColor="rgba(255,255,255,0.3)" opacity={1} dashed />
-            : <WandScreenRect strokeColor="rgba(255,255,255,0.3)" opacity={1} dashed />
-          }
-        </div>
+        {/* Ghost — hidden when arrows are active; otherwise full wand or just the center rect */}
+        {!showArrows && (
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%',
+            width: wandW, height: wandH,
+            pointerEvents: 'none',
+            animation: ghostAnim,
+          }}>
+            {ghostFull
+              ? <WandSilhouette strokeColor="rgba(0,154,206,0.6)" opacity={1} dashed ghost />
+              : <WandScreenRect strokeColor="rgba(0,154,206,0.6)" opacity={1} dashed ghost />
+            }
+          </div>
+        )}
 
         {/* Main wand silhouette + arrows — A/D keys snap it to the ghost animation extremes */}
         <div style={{
@@ -2100,18 +2102,20 @@ function GhostWandOverlay({ mode, g, f, showArrows = true, ghostFull = false, wa
           width: wandW, height: wandH,
           transform: 'translate(-50%,-29.3%)',
           pointerEvents: 'none',
+          transformStyle: 'preserve-3d',
           animation: syncMain ? ghostAnim : 'none',
-          transition: 'transform 0.2s ease-out, transform-origin 0s',
+          transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1), transform-origin 0s',
           ...(keyOverride ?? {}),
         }}>
           <WandSilhouette
-            strokeColor={ghostMain ? 'rgba(255,255,255,0.3)' : wandColor}
+            strokeColor={ghostMain ? 'rgba(0,154,206,0.5)' : wandColor}
             opacity={1}
             dashed={ghostMain}
+            ghost={ghostMain}
           />
 
-          {/* Arrows */}
-          {showArrows && <GWandArrows mode={mode} />}
+          {/* 3D Arrows — rendered in a small transparent R3F Canvas that moves with the wand */}
+          {showArrows && <WandArrowCanvas mode={mode as GuidanceMode} />}
         </div>
       </div>
     </div>
@@ -2180,6 +2184,247 @@ function RotationOverlay({ mode, g, f }: { mode: string; g: GuidanceState; f: bo
         </svg>
       </div>
 
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SMART NAV — missing-region navigator with approach-triggered ghost wand
+// ════════════════════════════════════════════════════════════════════════════
+
+const SMART_NAV_KF = `
+  @keyframes sn-pulse { 0%,100%{opacity:0.5;box-shadow:0 0 0 rgba(0,154,206,0.2)} 50%{opacity:1;box-shadow:0 0 18px 6px rgba(0,154,206,0.15)} }
+  @keyframes sn-ping  { 0%{opacity:0.75;transform:translate(-50%,-50%) scale(0.8)} 100%{opacity:0;transform:translate(-50%,-50%) scale(2.5)} }
+  @keyframes sn-compass-in { 0%{opacity:0;transform:translate(-50%,-50%) scale(0.8)} 100%{opacity:1;transform:translate(-50%,-50%) scale(1)} }
+  @keyframes sn-ghost-in   { 0%{opacity:0} to{opacity:1} }
+`;
+
+function SmartNavOverlay({ guidance, containerSize, pointerNDC, wandOffset = { x: 0, y: 0 } }: {
+  guidance: GuidanceState;
+  containerSize: { width: number; height: number };
+  pointerNDC: { x: number; y: number };
+  wandOffset?: { x: number; y: number };
+}) {
+  const pct = Math.round(guidance.coveragePercent * 100);
+  const { width: cw, height: ch } = containerSize;
+  const tp = guidance.targetScreenPos;
+  const wr = guidance.weakestRegion;
+  const isComplete = guidance.phase === 'complete';
+  const isScanning = guidance.phase === 'scanning';
+
+  const hasTarget = !!tp && !!wr && !isComplete && guidance.coveragePercent >= 0.03;
+
+  // Target position in pixels
+  const padX = cw * 0.12, padY = ch * 0.12;
+  const tx = tp ? Math.max(padX, Math.min(cw - padX, tp.x * cw)) : cw / 2;
+  const ty = tp ? Math.max(padY + 40, Math.min(ch - padY - 40, tp.y * ch)) : ch / 2;
+
+  // Wand position in pixels (wand follows cursor via smoothed wandOffset from center)
+  const wx = cw / 2 + wandOffset.x;
+  const wy = ch / 2 + wandOffset.y;
+
+  // Distance and approach ratio
+  const distPx = hasTarget ? Math.hypot(wx - tx, wy - ty) : Infinity;
+  const PROX = Math.min(cw, ch) * 0.22;
+  const approach = hasTarget ? Math.max(0, Math.min(1, 1 - distPx / (PROX * 2.5))) : 0;
+  const isNearTarget = distPx < PROX;
+
+  // Direction arrow angle: wand → target
+  const angleDeg = hasTarget ? (Math.atan2(ty - wy, tx - wx) * 180) / Math.PI : 0;
+
+  const regionCov = wr ? Math.round(wr.coverage * 100) : 0;
+  const wandW = 'clamp(130px,13vw,185px)';
+  const wandH = 'clamp(290px,29vw,415px)';
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', fontFamily: font.family }}>
+      <style>{KF + SMART_NAV_KF}</style>
+      <TopBar guidance={guidance} pct={pct} />
+
+      {/* ── Idle: pre-scan prompt ── */}
+      {guidance.coveragePercent < 0.03 && !isComplete && (
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px',
+        }}>
+          <svg width="52" height="52" viewBox="0 0 52 52" fill="none" opacity="0.45">
+            <circle cx="26" cy="26" r="22" stroke="#009ACE" strokeWidth="1.5" strokeDasharray="6 4" />
+            <path d="M26 14v12" stroke="#009ACE" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="26" cy="32" r="1.5" fill="#009ACE" />
+          </svg>
+          <div style={{
+            fontSize: '13px', fontWeight: 500, color: '#94A3B8',
+            backgroundColor: 'rgba(255,255,255,0.92)', padding: '6px 18px',
+            borderRadius: '12px', border: `1px solid ${color.borderDefault}`,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+          }}>
+            Hover over the model to start scanning
+          </div>
+        </div>
+      )}
+
+      {/* ── Target reticle at missing region ── */}
+      {hasTarget && cw > 0 && (
+        <>
+          {/* Soft outer glow */}
+          <div style={{
+            position: 'absolute', left: tx, top: ty, width: 70, height: 70,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(0,154,206,0.16) 0%, transparent 70%)',
+            transform: 'translate(-50%,-50%)',
+            animation: 'sn-pulse 2.2s ease-in-out infinite',
+            opacity: isNearTarget ? 0.35 : 1,
+            transition: 'opacity 0.5s ease',
+          }} />
+
+          {/* Pulsing ring */}
+          <div style={{
+            position: 'absolute', left: tx, top: ty, width: 34, height: 34,
+            borderRadius: '50%',
+            border: '2px solid rgba(0,154,206,0.7)',
+            backgroundColor: 'rgba(0,154,206,0.07)',
+            transform: 'translate(-50%,-50%)',
+            animation: 'sn-pulse 1.7s ease-in-out infinite',
+            opacity: isNearTarget ? 0.3 : 1,
+            transition: 'opacity 0.5s ease',
+          }}>
+            <div style={{
+              position: 'absolute', top: '50%', left: '50%', width: 8, height: 8,
+              borderRadius: '50%', backgroundColor: 'rgba(0,154,206,0.8)',
+              transform: 'translate(-50%,-50%)',
+            }} />
+          </div>
+
+          {/* Expanding ping */}
+          <div style={{
+            position: 'absolute', left: tx, top: ty, width: 34, height: 34,
+            borderRadius: '50%', border: '1.5px solid rgba(0,154,206,0.4)',
+            animation: 'sn-ping 2.2s ease-out infinite',
+            opacity: isNearTarget ? 0 : 1,
+            transition: 'opacity 0.4s ease',
+          }} />
+
+          {/* Coverage chip */}
+          {!isNearTarget && (
+            <div style={{
+              position: 'absolute',
+              left: Math.max(50, Math.min(cw - 50, tx)),
+              top: Math.min(ty + 30, ch - 36),
+              transform: 'translateX(-50%)',
+              fontSize: '10px', fontWeight: 600, color: '#009ACE', opacity: 0.85,
+              backgroundColor: 'rgba(255,255,255,0.92)',
+              padding: '2px 8px', borderRadius: '6px',
+              border: '1px solid rgba(0,154,206,0.12)',
+              whiteSpace: 'nowrap',
+            }}>
+              {regionCov}% covered
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── Compass arrow: follows wand, rotates toward target ── */}
+      {hasTarget && !isNearTarget && cw > 0 && (
+        <div style={{
+          position: 'absolute', left: wx, top: wy,
+          width: 52, height: 52,
+          transform: 'translate(-50%,-50%)',
+          animation: 'sn-compass-in 0.35s ease-out',
+          opacity: Math.max(0.35, 1 - approach * 3),
+          transition: 'opacity 0.3s ease',
+        }}>
+          <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+            <defs>
+              <linearGradient id="sn-g" x1="0" y1="0" x2="52" y2="52" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#818CF8"/>
+                <stop offset="100%" stopColor="#38BDF8"/>
+              </linearGradient>
+            </defs>
+            {/* Outer ring */}
+            <circle cx="26" cy="26" r="22" stroke="url(#sn-g)" strokeWidth="1.5" opacity="0.35" fill="rgba(0,0,0,0.04)"/>
+            {/* Rotating arrow — points RIGHT in SVG space; CSS rotation applied via rotate() in SVG */}
+            <g transform={`rotate(${angleDeg} 26 26)`}>
+              <line x1="26" y1="26" x2="43" y2="26" stroke="url(#sn-g)" strokeWidth="2.5" strokeLinecap="round"/>
+              <polygon points="48,26 41,22 41,30" fill="url(#sn-g)"/>
+            </g>
+            {/* Center dot */}
+            <circle cx="26" cy="26" r="3" fill="url(#sn-g)" opacity="0.7"/>
+          </svg>
+        </div>
+      )}
+
+      {/* ── Ghost wand silhouette at target — materializes as user approaches ── */}
+      {hasTarget && approach > 0.05 && cw > 0 && (
+        <div
+          key={isNearTarget ? 'near' : 'far'}
+          style={{
+            position: 'absolute', left: tx, top: ty,
+            width: wandW, height: wandH,
+            transform: 'translate(-50%, -29.3%)',
+            opacity: approach * (isNearTarget ? 0.82 : 0.55),
+            transition: 'opacity 0.45s ease',
+            animation: approach > 0.9 ? 'sn-ghost-in 0.5s ease-out' : undefined,
+            pointerEvents: 'none',
+          }}
+        >
+          <WandSilhouette
+            strokeColor={isScanning && isNearTarget ? 'rgba(22,163,74,0.8)' : 'rgba(255,255,255,0.65)'}
+            opacity={1}
+            dashed
+          />
+        </div>
+      )}
+
+      {/* ── Instruction bar ── */}
+      {guidance.coveragePercent >= 0.03 && !isComplete && (
+        <div style={{
+          position: 'absolute', bottom: 56, left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex', alignItems: 'center', gap: 10,
+          backgroundColor: 'rgba(255,255,255,0.94)',
+          padding: '8px 20px', borderRadius: '14px',
+          border: `1px solid ${isNearTarget ? 'rgba(22,163,74,0.15)' : 'rgba(0,154,206,0.12)'}`,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+          whiteSpace: 'nowrap',
+          transition: 'border-color 0.4s ease',
+        }}>
+          <div style={{
+            width: 7, height: 7, borderRadius: '50%',
+            backgroundColor: isNearTarget ? '#16A34A' : '#009ACE',
+            animation: isNearTarget && isScanning ? 'pulse-dot 1.2s infinite' : undefined,
+            transition: 'background-color 0.4s ease',
+          }} />
+          <span style={{
+            fontSize: 12, fontWeight: 600,
+            color: isNearTarget ? '#16A34A' : '#009ACE',
+            transition: 'color 0.4s ease',
+          }}>
+            {isNearTarget
+              ? (isScanning ? 'Scanning gap — keep going' : 'Scan here to fill the gap')
+              : (hasTarget ? 'Move scanner to the highlighted area' : 'Coverage balanced — keep scanning')}
+          </span>
+        </div>
+      )}
+
+      {/* ── Complete ── */}
+      {isComplete && (
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px',
+        }}>
+          <svg width="88" height="88" viewBox="0 0 88 88" fill="none">
+            <circle cx="44" cy="44" r="40" fill="rgba(22,163,74,0.1)" stroke="#16A34A" strokeWidth="2" />
+            <polyline points="24,44 37,57 64,31" stroke="#16A34A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div style={{
+            fontSize: '13px', fontWeight: 600, color: '#16A34A',
+            backgroundColor: 'rgba(255,255,255,0.92)', padding: '5px 16px',
+            borderRadius: '12px', border: '1px solid rgba(22,163,74,0.15)',
+          }}>
+            Scan complete
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2262,6 +2507,9 @@ function GuidanceOverlayInner({ guidance, pointerNDC, flashActive, containerSize
 
   // Surface Guide
   if (mode === 'surface-guide') return <SurfaceGuideOverlay guidance={guidance} containerSize={containerSize}/>;
+
+  // Smart Nav — missing-region navigator with approach-triggered ghost wand
+  if (mode === 'smart-nav') return <SmartNavOverlay guidance={guidance} containerSize={containerSize} pointerNDC={pointerNDC} wandOffset={wandOffset} />;
 
   return <ClassicOverlay guidance={guidance} pointerNDC={pointerNDC} flashActive={flashActive}/>;
 }

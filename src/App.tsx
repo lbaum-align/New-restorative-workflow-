@@ -14,11 +14,13 @@ import ImplantPlanning from './flow/ImplantPlanning';
 import IteroHomepage from './components/IteroHomepage';
 import PatientDetailsForm from './components/PatientDetailsForm';
 import ScanPageMultiLayer from './flow/ScanPageMultiLayer';
+import CanvasThemePage from './components/CanvasThemePage';
+import FloatingColorPicker from './components/FloatingColorPicker';
 import MultiLayerView from './flow/MultiLayerView';
 import Summary from './flow/Summary';
 
 // Application entrypoint with full workflow support
-type View = 'home' | 'flow' | 'resto' | 'iteroHome' | 'patientDetails' | 'scanGuidance';
+type View = 'home' | 'flow' | 'resto' | 'iteroHome' | 'patientDetails' | 'scanGuidance' | 'canvasTheme';
 type FlowStep = 'search' | 'create' | 'scanning' | 'newScan' | 'scanMultiLayer' | 'multiLayerView' | 'summary';
 
 // Define scan layer type
@@ -45,6 +47,17 @@ export default function App() {
   const [toothSpecifications, setToothSpecifications] = useState<{ [tooth: string]: { [key: string]: string } }>({});
   const [selectedBiteOptions, setSelectedBiteOptions] = useState<string[]>([]);
   const [preTreatmentEnabled, setPreTreatmentEnabled] = useState(false);
+  const [canvasBg, setCanvasBg] = useState('#D6E7F1');
+  const [isCanvasThemeMode, setIsCanvasThemeMode] = useState(false);
+
+  // Reset everything and go home — canvas always resets to default
+  const goHome = () => {
+    setCurrentView('home');
+    setFlowStep('search');
+    setSelectedPatient(null);
+    setCanvasBg('#D6E7F1');
+    setIsCanvasThemeMode(false);
+  };
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -61,21 +74,14 @@ export default function App() {
 
       switch (e.key.toLowerCase()) {
         case 'r':
-          // R - Restart (go to home)
-          setCurrentView('home');
-          setFlowStep('search');
-          setSelectedPatient(null);
+          goHome();
           break;
 
         case 'escape':
-          // Escape - Go back to home
-          setCurrentView('home');
-          setFlowStep('search');
-          setSelectedPatient(null);
+          goHome();
           break;
 
         case 'arrowleft':
-          // Arrow Left - Go back one step
           e.preventDefault();
           if (currentView === 'flow') {
             handleFlowBack();
@@ -85,7 +91,6 @@ export default function App() {
           break;
 
         case 'arrowright':
-          // Arrow Right - Go forward (if applicable)
           e.preventDefault();
           if (currentView === 'flow' && selectedPatient && flowStep === 'search') {
             setFlowStep('scanning');
@@ -93,14 +98,12 @@ export default function App() {
           break;
 
         case '1':
-          // 1 - Go to Flow
           if (currentView === 'home') {
             setCurrentView('iteroHome');
           }
           break;
 
         case '2':
-          // 2 - Go to Flow (patient search)
           if (currentView === 'home') {
             setCurrentView('flow');
             setFlowStep('search');
@@ -109,17 +112,13 @@ export default function App() {
           break;
 
         case '3':
-          // 3 - Go to Resto
           if (currentView === 'home') {
             setCurrentView('resto');
           }
           break;
 
         case 'h':
-          // H - Go to Home
-          setCurrentView('home');
-          setFlowStep('search');
-          setSelectedPatient(null);
+          goHome();
           break;
       }
     };
@@ -128,7 +127,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentView, flowStep, selectedPatient]);
 
-  const handleNavigate = (destination: 'flow' | 'resto' | 'iteroHome' | 'scanGuidance') => {
+  const handleNavigate = (destination: 'flow' | 'resto' | 'iteroHome' | 'scanGuidance' | 'canvasTheme') => {
     if (destination === 'flow') {
       setCurrentView('iteroHome');
       setSelectedPatient(null);
@@ -138,9 +137,7 @@ export default function App() {
   };
 
   const handleBack = () => {
-    setCurrentView('home');
-    setFlowStep('search');
-    setSelectedPatient(null);
+    goHome();
   };
 
   const handleFlowBack = () => {
@@ -158,42 +155,25 @@ export default function App() {
 
   const handleNextInFlow = () => {
     if (flowStep === 'search') {
-      // This will be called when a patient is selected
       setFlowStep('scanning');
     } else if (flowStep === 'create') {
-      // After creating a patient, go to scanning
       alert('Patient created!');
       setFlowStep('scanning');
     } else if (flowStep === 'scanning') {
-      // For now, just go back to home
       alert('Scan type selected! More flow screens coming soon...');
-      setCurrentView('home');
-      setFlowStep('search');
-      setSelectedPatient(null);
+      goHome();
     } else if (flowStep === 'newScan') {
-      // For now, just go back to home
       alert('New scan created! More flow screens coming soon...');
-      setCurrentView('home');
-      setFlowStep('search');
-      setSelectedPatient(null);
+      goHome();
     } else if (flowStep === 'scanMultiLayer') {
-      // For now, just go back to home
       alert('Multi-layer scan created! More flow screens coming soon...');
-      setCurrentView('home');
-      setFlowStep('search');
-      setSelectedPatient(null);
+      goHome();
     } else if (flowStep === 'multiLayerView') {
-      // For now, just go back to home
       alert('Multi-layer view created! More flow screens coming soon...');
-      setCurrentView('home');
-      setFlowStep('search');
-      setSelectedPatient(null);
+      goHome();
     } else if (flowStep === 'summary') {
-      // For now, just go back to home
       alert('Summary created! More flow screens coming soon...');
-      setCurrentView('home');
-      setFlowStep('search');
-      setSelectedPatient(null);
+      goHome();
     }
   };
 
@@ -207,7 +187,6 @@ export default function App() {
   };
 
   const handleProcedureChange = (procedureName: string) => {
-    // Map procedure names to scan types
     const procedureMap: { [key: string]: string } = {
       "Study model": "studyModel",
       "Invisalign": "invisalign",
@@ -230,9 +209,7 @@ export default function App() {
     setSelectedProcedure(procedureName);
   };
 
-  // Global handler to navigate to multi-layer scan page from anywhere
   const handleNavigateToMultiLayer = () => {
-    // If no patient is selected, create a default one
     if (!selectedPatient) {
       setSelectedPatient({
         id: "default",
@@ -247,9 +224,7 @@ export default function App() {
     setFlowStep('scanMultiLayer');
   };
 
-  // Global handler to navigate to multi-layer view page from anywhere
   const handleNavigateToView = () => {
-    // If no patient is selected, create a default one
     if (!selectedPatient) {
       setSelectedPatient({
         id: "default",
@@ -264,14 +239,11 @@ export default function App() {
     setFlowStep('multiLayerView');
   };
 
-  // Handler for when user clicks edit icon in procedure button
   const handleProcedureEdit = () => {
-    // Navigate back to scanning selection page (keep patient context)
     setFlowStep('scanning');
     setSelectedScanType(originalProcedureScanType);
   };
 
-  // Handler for navigating to summary page
   const handleNavigateToSummary = () => {
     if (!selectedPatient) {
       setSelectedPatient({
@@ -287,7 +259,6 @@ export default function App() {
     setFlowStep('summary');
   };
 
-  // Handler for navigating back to Rx (newScan) page
   const handleNavigateToRx = () => {
     if (!selectedPatient) {
       setSelectedPatient({
@@ -303,9 +274,13 @@ export default function App() {
     setFlowStep('newScan');
   };
 
+  // ── Render main content ─────────────────────────────────────────────────────
+
+  let content: React.ReactNode = null;
+
   if (currentView === 'flow') {
     if (flowStep === 'search') {
-      return (
+      content = (
         <LayoutGroup>
           <PatientSearch
             onBack={handleBack}
@@ -317,22 +292,19 @@ export default function App() {
           />
         </LayoutGroup>
       );
-    }
-    if (flowStep === 'create') {
-      return (
+    } else if (flowStep === 'create') {
+      content = (
         <LayoutGroup>
           <CreatePatient onBack={handleFlowBack} onNext={handleNextInFlow} onNavigateToMultiLayer={handleNavigateToMultiLayer} onNavigateToView={handleNavigateToView} />
         </LayoutGroup>
       );
-    }
-    if (flowStep === 'scanning' && selectedPatient) {
-      return (
+    } else if (flowStep === 'scanning' && selectedPatient) {
+      content = (
         <LayoutGroup>
           <ScanningSelection
             onNext={(scanType: string) => {
               setSelectedScanType(scanType);
               setOriginalProcedureScanType(scanType);
-              // Set initial procedure name based on scan type
               const scanTypeToProcedure: { [key: string]: string } = {
                 "studyModel": "Study model",
                 "invisalign": "Invisalign",
@@ -352,11 +324,9 @@ export default function App() {
           />
         </LayoutGroup>
       );
-    }
-    if (flowStep === 'newScan' && selectedPatient) {
-      // Check if the scan type is "dentures"
+    } else if (flowStep === 'newScan' && selectedPatient) {
       if (selectedScanType === 'dentures') {
-        return (
+        content = (
           <LayoutGroup>
             <Dentures
               onBack={handleFlowBack}
@@ -370,11 +340,8 @@ export default function App() {
             />
           </LayoutGroup>
         );
-      }
-      
-      // Check if the scan type is "appliances"
-      if (selectedScanType === 'appliances') {
-        return (
+      } else if (selectedScanType === 'appliances') {
+        content = (
           <LayoutGroup>
             <Appliances
               onBack={handleFlowBack}
@@ -388,11 +355,8 @@ export default function App() {
             />
           </LayoutGroup>
         );
-      }
-      
-      // Check if the scan type is "invisalign"
-      if (selectedScanType === 'invisalign') {
-        return (
+      } else if (selectedScanType === 'invisalign') {
+        content = (
           <LayoutGroup>
             <Invisalign
               onBack={handleFlowBack}
@@ -405,11 +369,8 @@ export default function App() {
             />
           </LayoutGroup>
         );
-      }
-      
-      // Check if the scan type is "implantPlanning"
-      if (selectedScanType === 'implantPlanning') {
-        return (
+      } else if (selectedScanType === 'implantPlanning') {
+        content = (
           <LayoutGroup>
             <ImplantPlanning
               onBack={handleFlowBack}
@@ -422,32 +383,31 @@ export default function App() {
             />
           </LayoutGroup>
         );
+      } else {
+        content = (
+          <LayoutGroup>
+            <NewScan
+              onBack={handleFlowBack}
+              onNext={handleNextInFlow}
+              patient={selectedPatient}
+              scanType={selectedScanType || ''}
+              initialProcedure={selectedProcedure || undefined}
+              onProcedureChange={handleProcedureChange}
+              onNavigateToMultiLayer={handleNavigateToMultiLayer}
+              onNavigateToView={handleNavigateToView}
+              onNavigateToSummary={handleNavigateToSummary}
+              onProcedureEdit={handleProcedureEdit}
+              externalToothTreatments={toothTreatments}
+              onToothTreatmentsChange={setToothTreatments}
+              externalToothSpecifications={toothSpecifications}
+              onToothSpecificationsChange={setToothSpecifications}
+              onPreTreatmentToggle={setPreTreatmentEnabled}
+            />
+          </LayoutGroup>
+        );
       }
-      
-      return (
-        <LayoutGroup>
-          <NewScan
-            onBack={handleFlowBack}
-            onNext={handleNextInFlow}
-            patient={selectedPatient}
-            scanType={selectedScanType || ''}
-            initialProcedure={selectedProcedure || undefined}
-            onProcedureChange={handleProcedureChange}
-            onNavigateToMultiLayer={handleNavigateToMultiLayer}
-            onNavigateToView={handleNavigateToView}
-            onNavigateToSummary={handleNavigateToSummary}
-            onProcedureEdit={handleProcedureEdit}
-            externalToothTreatments={toothTreatments}
-            onToothTreatmentsChange={setToothTreatments}
-            externalToothSpecifications={toothSpecifications}
-            onToothSpecificationsChange={setToothSpecifications}
-            onPreTreatmentToggle={setPreTreatmentEnabled}
-          />
-        </LayoutGroup>
-      );
-    }
-    if (flowStep === 'scanMultiLayer' && selectedPatient) {
-      return (
+    } else if (flowStep === 'scanMultiLayer' && selectedPatient) {
+      content = (
         <LayoutGroup>
           <ScanPageMultiLayer
             onBack={handleFlowBack}
@@ -463,12 +423,14 @@ export default function App() {
             onBiteOptionsChange={setSelectedBiteOptions}
             toothTreatments={toothTreatments}
             preTreatmentEnabled={preTreatmentEnabled}
+            canvasBg={canvasBg}
+            onCanvasBgChange={setCanvasBg}
+            isCanvasThemeMode={isCanvasThemeMode}
           />
         </LayoutGroup>
       );
-    }
-    if (flowStep === 'multiLayerView' && selectedPatient) {
-      return (
+    } else if (flowStep === 'multiLayerView' && selectedPatient) {
+      content = (
         <LayoutGroup>
           <MultiLayerView
             onBack={handleFlowBack}
@@ -481,12 +443,13 @@ export default function App() {
             scannedLayers={scannedLayers}
             scanType={selectedScanType}
             selectedBiteOptions={selectedBiteOptions}
+            canvasBg={canvasBg}
+            onCanvasBgChange={setCanvasBg}
           />
         </LayoutGroup>
       );
-    }
-    if (flowStep === 'summary' && selectedPatient) {
-      return (
+    } else if (flowStep === 'summary' && selectedPatient) {
+      content = (
         <LayoutGroup>
           <Summary
             onBack={handleFlowBack}
@@ -503,27 +466,21 @@ export default function App() {
         </LayoutGroup>
       );
     }
-  }
-
-  if (currentView === 'resto') {
-    return (
+  } else if (currentView === 'resto') {
+    content = (
       <LayoutGroup>
         <RestoHome onBack={handleBack} />
       </LayoutGroup>
     );
-  }
-
-  if (currentView === 'iteroHome') {
-    return (
+  } else if (currentView === 'iteroHome') {
+    content = (
       <IteroHomepage
         onNewScan={() => {
           setCurrentView('patientDetails');
         }}
       />
     );
-  }
-
-  if (currentView === 'scanGuidance') {
+  } else if (currentView === 'scanGuidance') {
     const demoPatient = selectedPatient ?? {
       id: 'demo',
       firstName: 'Demo',
@@ -532,20 +489,31 @@ export default function App() {
       gender: 'female',
       chartNumber: '000000',
     };
-    return (
+    content = (
       <LayoutGroup>
         <ScanPageMultiLayer
           patient={demoPatient}
           onBack={() => setCurrentView('home')}
           onHome={() => setCurrentView('home')}
           enableScanGuidance={true}
+          canvasBg={canvasBg}
+          onCanvasBgChange={setCanvasBg}
         />
       </LayoutGroup>
     );
-  }
-
-  if (currentView === 'patientDetails') {
-    return (
+  } else if (currentView === 'canvasTheme') {
+    content = (
+      <CanvasThemePage
+        onBackToHome={goHome}
+        onApplyToFlow={(color: string) => {
+          setCanvasBg(color);
+          setIsCanvasThemeMode(true);
+          setCurrentView('iteroHome');
+        }}
+      />
+    );
+  } else if (currentView === 'patientDetails') {
+    content = (
       <PatientDetailsForm
         onBack={() => {
           setCurrentView('iteroHome');
@@ -557,17 +525,29 @@ export default function App() {
         }}
         onCreatePatient={(patient: Patient) => {
           setSelectedPatient(patient);
-          // Go directly to scanning selection
           setCurrentView('flow');
           setFlowStep('scanning');
         }}
       />
     );
+  } else {
+    // home
+    content = (
+      <LayoutGroup>
+        <HomePage onNavigate={handleNavigate} />
+      </LayoutGroup>
+    );
   }
 
   return (
-    <LayoutGroup>
-      <HomePage onNavigate={handleNavigate} />
-    </LayoutGroup>
+    <>
+      {content}
+      {isCanvasThemeMode && currentView !== 'canvasTheme' && currentView !== 'home' && (
+        <FloatingColorPicker
+          currentColor={canvasBg}
+          onColorChange={setCanvasBg}
+        />
+      )}
+    </>
   );
 }

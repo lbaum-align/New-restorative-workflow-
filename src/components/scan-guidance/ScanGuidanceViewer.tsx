@@ -1,16 +1,19 @@
 import React, {
-  Suspense, useRef, useMemo, useState,
+  useRef, useMemo, useState,
   useCallback, useEffect, useLayoutEffect,
 } from 'react';
-import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Center, Environment } from '@react-three/drei';
-import { PLYLoader } from 'three-stdlib';
 import * as THREE from 'three';
-import upperJawModel from '@/assets/3d-models/upper-jaw.ply?url';
+import upperJawModel from '@/assets/3d-models/Upper Jaw .ply?url';
+import lowerJawModel from '@/assets/3d-models/Lower Jaw.ply?url';
+import biteModel from '@/assets/3d-models/Bite.ply?url';
+import { loadiTeroPLY } from './iTeroPLYLoader';
 import RevealMaterial from './RevealMaterial';
 import { useScanProgress } from './useScanProgress';
 import { useGuidanceEngine } from './useGuidanceEngine';
 import GuidanceOverlay from './GuidanceOverlay';
+import GuidanceArrows3D from './GuidanceArrows3D';
 import type { ScanPhase, GuidanceState, ModelBounds, GuidanceMode } from './types';
 
 // ─── Inner scene ──────────────────────────────────────────────────────────────
@@ -18,12 +21,10 @@ import type { ScanPhase, GuidanceState, ModelBounds, GuidanceMode } from './type
 const BASE_ROT_X = Math.PI * 0.6;
 const BASE_ROT_Z = Math.PI;
 
-// Frame NDC half-extents — smaller = finer scan footprint
-const FRAME_HALF_W = 0.07;
-const FRAME_HALF_H = 0.14;
-
 // Reusable vector for projection (avoids GC)
 const _projVec = new THREE.Vector3();
+
+type JawType = 'upper' | 'lower' | 'bite';
 
 interface SceneProps {
   onGuidanceUpdate: (g: GuidanceState) => void;
@@ -31,6 +32,8 @@ interface SceneProps {
   guidanceMode?: GuidanceMode;
   lockModel?: boolean;
   isScanningRef?: React.RefObject<boolean>;
+  showArrows3D?: boolean;
+  jaw?: JawType;
 }
 
 const DOF_AXIS: Record<string, 'lr'|'ud'|'fb'|'roll'|'pitch'|'yaw'> = {
@@ -44,13 +47,37 @@ const DOF_AXIS: Record<string, 'lr'|'ud'|'fb'|'roll'|'pitch'|'yaw'> = {
   'rot-cw':'roll','rot-ccw':'roll','rot-tilt':'pitch',
 };
 
-function Scene({ onGuidanceUpdate, onReset, guidanceMode, lockModel, isScanningRef }: SceneProps) {
-  const geometry = useLoader(PLYLoader, upperJawModel);
+const JAW_MODEL_URL: Record<JawType, string> = {
+  upper: upperJawModel,
+  lower: lowerJawModel,
+  bite: biteModel,
+};
+
+// Cache loaded geometries so we never reload the same file
+const geoCache: Record<string, THREE.BufferGeometry> = {};
+
+function Scene({ onGuidanceUpdate, onReset, guidanceMode, lockModel, isScanningRef, showArrows3D = true, jaw = 'upper' }: SceneProps) {
+  const [loadedGeo, setLoadedGeo] = useState<THREE.BufferGeometry | null>(() => geoCache[jaw] || null);
+
+  useEffect(() => {
+    const url = JAW_MODEL_URL[jaw];
+    if (geoCache[jaw]) {
+      setLoadedGeo(geoCache[jaw]);
+      return;
+    }
+    loadiTeroPLY(url).then((geo) => {
+      geoCache[jaw] = geo;
+      setLoadedGeo(geo);
+    });
+  }, [jaw]);
+
+  const geometry = loadedGeo;
+
   const meshRef  = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
+  const scanPlaneRef = useRef<THREE.Mesh>(null);
   const { camera, pointer } = useThree();
   const raycaster = useRef(new THREE.Raycaster());
-  const samplePt  = useRef(new THREE.Vector2());
 
   const [phase, setPhase]         = useState<ScanPhase>('idle');
   const [isHovering, setIsHovering] = useState(false);
@@ -59,12 +86,19 @@ function Scene({ onGuidanceUpdate, onReset, guidanceMode, lockModel, isScanningR
   const weakestCenterRef = useRef<{ x: number; z: number } | null>(null);
   const dofTime = useRef(0);
   const frameCount = useRef(0);
+  const guidanceRef = useRef<GuidanceState>({
+    phase: 'idle', direction: null, hint: '', coveragePercent: 0,
+    activeRegion: null, regions: [], stage: 'occlusal', activeEdge: null,
+    stageAdvanced: false, targetScreenPos: null, weakestRegion: null,
+    modelRotation: { x: 0, y: 0 },
+  });
 
   const { coverageTexture, captureRect, getCoverage, getRegionCoverage, reset } = useScanProgress();
   const { evaluate, resetEngine } = useGuidanceEngine();
 
   // ── Geometry ──────────────────────────────────────────────────────────────
   const { bounds, enhancedGeo } = useMemo(() => {
+    if (!geometry) return { bounds: { minX: -1, maxX: 1, minZ: -1, maxZ: 1, surfaceY: 0 } as ModelBounds, enhancedGeo: new THREE.BufferGeometry() };
     const geo = geometry.clone();
     geo.center();
     geo.computeVertexNormals();
@@ -106,6 +140,19 @@ function Scene({ onGuidanceUpdate, onReset, guidanceMode, lockModel, isScanningR
     if (groupRef.current) groupRef.current.rotation.set(BASE_ROT_X, 0, BASE_ROT_Z);
   }, []);
 
+  // ── Reset on jaw change ────────────────────────────────────────────────────
+  const prevJawRef = useRef(jaw);
+  useEffect(() => {
+    if (prevJawRef.current !== jaw) {
+      prevJawRef.current = jaw;
+      reset(); resetEngine();
+      setPhase('idle'); setStartTime(null); setIsHovering(false);
+      currentRegionRef.current = undefined;
+      weakestCenterRef.current = null;
+      if (groupRef.current) groupRef.current.rotation.set(BASE_ROT_X, 0, BASE_ROT_Z);
+    }
+  }, [jaw]);
+
   // ── Reset ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (onReset && onReset > 0) {
@@ -116,6 +163,7 @@ function Scene({ onGuidanceUpdate, onReset, guidanceMode, lockModel, isScanningR
       if (groupRef.current) groupRef.current.rotation.set(BASE_ROT_X, 0, BASE_ROT_Z);
     }
   }, [onReset]);
+
 
   // ── Frame loop ────────────────────────────────────────────────────────────
   useFrame(() => {
@@ -164,47 +212,102 @@ function Scene({ onGuidanceUpdate, onReset, guidanceMode, lockModel, isScanningR
       else { group.position.x += (0 - group.position.x) * 0.08; group.position.y += (0 - group.position.y) * 0.08; m.scale.setScalar(0.055); }
     }
 
-    // Center ray for hover detection
+    // Raycast against the invisible scan plane for reliable hit detection
     raycaster.current.setFromCamera(pointer, camera);
-    const hits = raycaster.current.intersectObject(mesh, false);
-    const hitting = hits.length > 0;
+    const scanPlane = scanPlaneRef.current;
+    const planeHits = scanPlane ? raycaster.current.intersectObject(scanPlane, false) : [];
+    const hitting = planeHits.length > 0;
 
     if (hitting !== isHovering) setIsHovering(hitting);
 
     const coverage = getCoverage();
     let currentPhase: ScanPhase = phase;
 
-    const isSKeyDown = isScanningRef ? isScanningRef.current : true;
+    const isSKeyDown = isScanningRef ? isScanningRef.current : false;
     frameCount.current++;
 
     if (coverage >= 0.95) {
       currentPhase = 'complete';
-    } else if (hitting && isSKeyDown) {
+    } else if (isSKeyDown) {
       if (startTime === null) setStartTime(Date.now());
       currentPhase = 'scanning';
 
-      // Capture every 2nd frame to stay smooth while still scanning well
-      if (frameCount.current % 2 === 0) {
-        const centerLocal = mesh.worldToLocal(hits[0].point.clone());
-        const spreadX = (bounds.maxX - bounds.minX) * 0.06;
-        const spreadZ = (bounds.maxZ - bounds.minZ) * 0.06;
-        captureRect(
-          centerLocal.x - spreadX, centerLocal.x + spreadX,
-          centerLocal.z - spreadZ, centerLocal.z + spreadZ,
-          bounds,
-        );
+      {
+        const rangeX = bounds.maxX - bounds.minX;
+        const rangeZ = bounds.maxZ - bounds.minZ;
+        const sp = scanPlaneRef.current;
+        if (!sp) return;
 
-        // Track current region
-        const nx = (centerLocal.x - bounds.minX) / (bounds.maxX - bounds.minX);
-        const nz = (centerLocal.z - bounds.minZ) / (bounds.maxZ - bounds.minZ);
-        if      (nx < 0.5 && nz < 0.5) currentRegionRef.current = 'upper-left';
-        else if (nx >= 0.5 && nz < 0.5) currentRegionRef.current = 'upper-right';
-        else if (nx < 0.5)              currentRegionRef.current = 'lower-left';
-        else                            currentRegionRef.current = 'lower-right';
+        // The silhouette is nearly centered — tiny pointer bias
+        const silCenterX = pointer.x * 0.02;
+        const silCenterY = pointer.y * 0.02;
+
+        // NDC extents of the silhouette rectangle on screen
+        const ndcHalfW = 0.12;
+        const ndcHalfH = 0.20;
+        const sampleNDC = new THREE.Vector2();
+
+        // Sample a grid across the silhouette — raycast against the scan box
+        // then convert hit point to mesh-local space for painting
+        const SAMPLES = 4;
+        for (let si = 0; si < SAMPLES; si++) {
+          for (let sj = 0; sj < SAMPLES; sj++) {
+            const u = (si / (SAMPLES - 1)) * 2 - 1;
+            const v = (sj / (SAMPLES - 1)) * 2 - 1;
+            sampleNDC.set(silCenterX + u * ndcHalfW, silCenterY + v * ndcHalfH);
+
+            raycaster.current.setFromCamera(sampleNDC, camera);
+            const hits = raycaster.current.intersectObject(sp, false);
+            if (hits.length > 0) {
+              const localPt = mesh.worldToLocal(hits[0].point.clone());
+              const brushX = rangeX * 0.14;
+              const brushZ = rangeZ * 0.14;
+              captureRect(
+                localPt.x - brushX, localPt.x + brushX,
+                localPt.z - brushZ, localPt.z + brushZ,
+                bounds,
+              );
+            }
+          }
+        }
+
+        // Random samples for smooth organic fill
+        for (let r = 0; r < 8; r++) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = Math.random();
+          sampleNDC.set(
+            silCenterX + Math.cos(angle) * ndcHalfW * dist,
+            silCenterY + Math.sin(angle) * ndcHalfH * dist,
+          );
+          raycaster.current.setFromCamera(sampleNDC, camera);
+          const hits = raycaster.current.intersectObject(sp, false);
+          if (hits.length > 0) {
+            const localPt = mesh.worldToLocal(hits[0].point.clone());
+            const brushX = rangeX * 0.10;
+            const brushZ = rangeZ * 0.10;
+            captureRect(
+              localPt.x - brushX, localPt.x + brushX,
+              localPt.z - brushZ, localPt.z + brushZ,
+              bounds,
+            );
+          }
+        }
+
+        // Determine active region from center hit
+        sampleNDC.set(silCenterX, silCenterY);
+        raycaster.current.setFromCamera(sampleNDC, camera);
+        const centerHits = raycaster.current.intersectObject(sp, false);
+        if (centerHits.length > 0) {
+          const lp = mesh.worldToLocal(centerHits[0].point.clone());
+          const rnx = (lp.x - bounds.minX) / rangeX;
+          const rnz = (lp.z - bounds.minZ) / rangeZ;
+          if      (rnx < 0.5 && rnz < 0.5) currentRegionRef.current = 'upper-left';
+          else if (rnx >= 0.5 && rnz < 0.5) currentRegionRef.current = 'upper-right';
+          else if (rnx < 0.5)              currentRegionRef.current = 'lower-left';
+          else                            currentRegionRef.current = 'lower-right';
+        }
       }
     } else if (startTime !== null && !isSKeyDown) {
-      currentPhase = 'paused';
-    } else if (!hitting && startTime !== null) {
       currentPhase = 'paused';
     }
 
@@ -246,7 +349,9 @@ function Scene({ onGuidanceUpdate, onReset, guidanceMode, lockModel, isScanningR
       y: group.rotation.y,
     };
 
-    onGuidanceUpdate({ ...guidance, coveragePercent: coverage });
+    const finalGuidance = { ...guidance, coveragePercent: coverage };
+    guidanceRef.current = finalGuidance;
+    onGuidanceUpdate(finalGuidance);
   });
 
   return (
@@ -264,6 +369,15 @@ function Scene({ onGuidanceUpdate, onReset, guidanceMode, lockModel, isScanningR
         <group ref={groupRef}>
           <mesh ref={meshRef} geometry={enhancedGeo} scale={0.055}>
             <RevealMaterial coverageTexture={coverageTexture} bounds={bounds} />
+          </mesh>
+          {/* Invisible scan box — catches raycasts reliably from any angle */}
+          <mesh ref={scanPlaneRef} scale={0.055} renderOrder={-1}>
+            <boxGeometry args={[
+              (bounds.maxX - bounds.minX) * 2.5,
+              (bounds.maxZ - bounds.minZ) * 2.5,
+              (bounds.maxZ - bounds.minZ) * 2.5,
+            ]} />
+            <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
           </mesh>
         </group>
       </Center>
@@ -295,14 +409,6 @@ function Scene({ onGuidanceUpdate, onReset, guidanceMode, lockModel, isScanningR
   );
 }
 
-function LoadingSpinner() {
-  return (
-    <mesh>
-      <sphereGeometry args={[0.5, 16, 16]} />
-      <meshBasicMaterial color="#009ACE" wireframe />
-    </mesh>
-  );
-}
 
 // ─── Exported Viewer ─────────────────────────────────────────────────────────
 
@@ -316,9 +422,11 @@ interface ScanGuidanceViewerProps {
   syncMain?: boolean;
   /** When true, scanning only occurs while right mouse button is held */
   requireRightClick?: boolean;
+  /** Which jaw model to render */
+  jaw?: JawType;
 }
 
-export default function ScanGuidanceViewer({ resetTrigger, guidanceMode = 'classic', lockModel = false, hideTopBar = false, showArrows = true, ghostMain = false, syncMain = false, requireRightClick = false }: ScanGuidanceViewerProps) {
+export default function ScanGuidanceViewer({ resetTrigger, guidanceMode = 'classic', lockModel = false, hideTopBar = false, showArrows = true, ghostMain = false, syncMain = false, requireRightClick = false, jaw = 'upper' }: ScanGuidanceViewerProps) {
   const [guidance, setGuidance] = useState<GuidanceState>({
     phase: 'idle', direction: null, hint: '', coveragePercent: 0,
     activeRegion: null, regions: [],
@@ -340,8 +448,8 @@ export default function ScanGuidanceViewer({ resetTrigger, guidanceMode = 'class
   const smoothedRef     = useRef({ x: 0, y: 0 });
   const containerSizeRef = useRef(containerSize);
   const lockModelRef     = useRef(lockModel);
-  // Right-click scan gate: when requireRightClick is true, only scans while right button held
-  const isScanningRef   = useRef(!requireRightClick);
+  // S key gates scanning — hold S to scan
+  const isScanningRef   = useRef(false);
 
   // Keep refs in sync with props/state
   useEffect(() => { containerSizeRef.current = containerSize; }, [containerSize]);
@@ -386,20 +494,20 @@ export default function ScanGuidanceViewer({ resetTrigger, guidanceMode = 'class
     const held = new Set<string>();
     const onDown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      if (k === 's' && requireRightClick) isScanningRef.current = true;
+      if (k === 's') isScanningRef.current = true;
       if (k === 'a' && !held.has('a')) { held.add('a'); setKeyDir(-1); }
       if (k === 'd' && !held.has('d')) { held.add('d'); setKeyDir(1); }
     };
     const onUp = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      if (k === 's' && requireRightClick) isScanningRef.current = false;
+      if (k === 's') isScanningRef.current = false;
       if (k === 'a') { held.delete('a'); setKeyDir(held.has('d') ? 1 : 0); }
       if (k === 'd') { held.delete('d'); setKeyDir(held.has('a') ? -1 : 0); }
     };
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
     return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
-  }, [requireRightClick]);
+  }, []);
 
   // RAF lerp loop — runs every frame, smoothly interpolates the wand offset
   useEffect(() => {
@@ -481,15 +589,15 @@ export default function ScanGuidanceViewer({ resetTrigger, guidanceMode = 'class
         style={{ touchAction: 'none' }}
         dpr={[1, 2]}
       >
-        <Suspense fallback={<LoadingSpinner />}>
-          <Scene
-            onGuidanceUpdate={handleGuidance}
-            onReset={resetTrigger}
-            guidanceMode={guidanceMode}
-            lockModel={lockModel}
-            isScanningRef={isScanningRef}
-          />
-        </Suspense>
+        <Scene
+          onGuidanceUpdate={handleGuidance}
+          onReset={resetTrigger}
+          guidanceMode={guidanceMode}
+          lockModel={lockModel}
+          isScanningRef={isScanningRef}
+          showArrows3D={showArrows}
+          jaw={jaw}
+        />
       </Canvas>
 
       <GuidanceOverlay

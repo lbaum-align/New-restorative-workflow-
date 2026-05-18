@@ -8,15 +8,9 @@ interface RevealMaterialProps {
   bounds: ModelBounds;
 }
 
-/**
- * Custom MeshPhysicalMaterial that uses a coverage DataTexture to
- * progressively reveal the model. Uncovered areas render as translucent white;
- * covered areas show full vertex-colored dental material.
- */
 export default function RevealMaterial({ coverageTexture, bounds }: RevealMaterialProps) {
   const matRef = useRef<THREE.MeshPhysicalMaterial>(null);
 
-  // Store uniforms ref so we can update them
   const uniformsRef = useRef<{
     uCoverage: { value: THREE.DataTexture };
     uBBoxMin: { value: THREE.Vector2 };
@@ -28,14 +22,12 @@ export default function RevealMaterial({ coverageTexture, bounds }: RevealMateri
     if (!mat) return;
 
     mat.onBeforeCompile = (shader) => {
-      // Add custom uniforms
       shader.uniforms.uCoverage = { value: coverageTexture };
       shader.uniforms.uBBoxMin = { value: new THREE.Vector2(bounds.minX, bounds.minZ) };
       shader.uniforms.uBBoxMax = { value: new THREE.Vector2(bounds.maxX, bounds.maxZ) };
 
       uniformsRef.current = shader.uniforms as any;
 
-      // Inject uniform declarations into fragment shader
       shader.fragmentShader = `
         uniform sampler2D uCoverage;
         uniform vec2 uBBoxMin;
@@ -43,12 +35,10 @@ export default function RevealMaterial({ coverageTexture, bounds }: RevealMateri
         varying vec3 vLocalPos;
       ` + shader.fragmentShader;
 
-      // Inject local-space position varying into vertex shader
       shader.vertexShader = `
         varying vec3 vLocalPos;
       ` + shader.vertexShader;
 
-      // Pass local-space position (geometry coords, unaffected by group rotation)
       shader.vertexShader = shader.vertexShader.replace(
         '#include <worldpos_vertex>',
         `
@@ -57,35 +47,32 @@ export default function RevealMaterial({ coverageTexture, bounds }: RevealMateri
         `
       );
 
-      // Modify fragment output to blend based on coverage
       shader.fragmentShader = shader.fragmentShader.replace(
         '#include <dithering_fragment>',
         `
         #include <dithering_fragment>
 
-        // Map local XZ to 0-1 UV — stays stable regardless of group rotation
         vec2 coverageUV = (vLocalPos.xz - uBBoxMin) / (uBBoxMax - uBBoxMin);
         coverageUV = clamp(coverageUV, 0.0, 1.0);
 
         float coverage = texture2D(uCoverage, coverageUV).r;
+        float reveal = smoothstep(0.08, 0.45, coverage);
 
-        // Smooth step for nice edge transition
-        float reveal = smoothstep(0.1, 0.5, coverage);
+        // Ghost: translucent white-blue tint
+        vec3 ghostColor = vec3(0.90, 0.93, 0.96);
 
-        // Uncovered: white translucent ghost so users can see the model shape
-        vec3 ghostColor = vec3(1.0);
+        // Solid: full material with slight enhancement
+        vec3 solidColor = gl_FragColor.rgb * 1.05 + vec3(0.0, 0.01, 0.005);
 
-        gl_FragColor.rgb = mix(ghostColor, gl_FragColor.rgb, reveal);
+        gl_FragColor.rgb = mix(ghostColor, solidColor, reveal);
         gl_FragColor.a = mix(0.18, 1.0, reveal);
         `
       );
     };
 
-    // Force material recompilation
     mat.needsUpdate = true;
   }, [coverageTexture, bounds]);
 
-  // Keep the coverage texture uniform updated each frame
   useFrame(() => {
     if (uniformsRef.current) {
       uniformsRef.current.uCoverage.value = coverageTexture;

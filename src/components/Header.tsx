@@ -1,6 +1,8 @@
+import { useState } from "react";
 import svgPaths from "../imports/svg-9qmivtwjge";
 import imgStepIcon from "figma:asset/07f97a5be96fd814ee3e830a2d5bb8ecc4ab9638.png";
 import { imgPath4141 } from "../imports/svg-o9n46";
+import SettingsModal from "./SettingsModal";
 import RxIcon from "../imports/RxIcon";
 import EmailIcon from "../imports/Icon-287-18";
 import SearchIconImport from "../imports/Icon-287-132";
@@ -184,9 +186,12 @@ interface HeaderProps {
   onNavigateToScan?: () => void;
   onNavigateToView?: () => void;
   onNavigateToSummary?: () => void;
+  canvasBg?: string;
+  onCanvasBgChange?: (color: string) => void;
 }
 
-export default function Header({ activeSteps = { scan: true }, onStepToggle, onNavigateToRx, onNavigateToScan, onNavigateToView, onNavigateToSummary }: HeaderProps) {
+export default function Header({ activeSteps = { scan: true }, onStepToggle, onNavigateToRx, onNavigateToScan, onNavigateToView, onNavigateToSummary, canvasBg, onCanvasBgChange }: HeaderProps) {
+  const [showSettings, setShowSettings] = useState(false);
   return (
     <div className="bg-white flex flex-col items-start relative w-full shrink-0 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.1),0px_2px_8px_0px_rgba(0,0,0,0.15)] sticky top-0 z-[250]">
       {/* Main Header Bar - Single Row */}
@@ -260,7 +265,7 @@ export default function Header({ activeSteps = { scan: true }, onStepToggle, onN
           <button className="transition-opacity hover:opacity-80">
             <BatteryIcon />
           </button>
-          <button className="transition-opacity hover:opacity-80">
+          <button className="transition-opacity hover:opacity-80" onClick={() => setShowSettings(true)}>
             <SettingsIcon />
           </button>
           <button className="transition-opacity hover:opacity-80">
@@ -268,6 +273,7 @@ export default function Header({ activeSteps = { scan: true }, onStepToggle, onN
           </button>
         </div>
       </div>
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} canvasBg={canvasBg} onCanvasBgChange={onCanvasBgChange} />}
     </div>
   );
 }

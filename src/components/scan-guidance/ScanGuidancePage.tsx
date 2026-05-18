@@ -10,7 +10,7 @@ interface ScanGuidancePageProps {
 
 // ─── Group definitions ───────────────────────────────────────────────────────
 
-type GroupId = 'scan' | 'dof-frame' | 'bare' | 'pulse' | 'rotation' | 'ghost-wand' | 'scan-wand' | 'ghost-scan-wand' | 'bare-ghost-wand' | 'full-ghost-wand' | 'full-arrow-ghost-wand' | 'scan-indicator';
+type GroupId = 'scan' | 'dof-frame' | 'bare' | 'pulse' | 'rotation' | 'ghost-wand' | 'scan-wand' | 'ghost-scan-wand' | 'bare-ghost-wand' | 'full-ghost-wand' | 'full-arrow-ghost-wand' | 'scan-indicator' | 'smart-nav';
 
 interface GroupDef {
   id: GroupId;
@@ -154,15 +154,24 @@ const GROUPS: GroupDef[] = [
       { id: 'scan-indicator', label: 'Scan Indicator' },
     ],
   },
+  {
+    id: 'smart-nav', label: 'Smart Nav', accent: color.primary,
+    modes: [
+      { id: 'smart-nav', label: 'Smart Nav' },
+    ],
+  },
 ];
 
 // ─── Page ────────────────────────────────────────────────────────────────────
+
+type JawType = 'upper' | 'lower' | 'bite';
 
 export default function ScanGuidancePage({ onBackToHome }: ScanGuidancePageProps) {
   const [resetCounter, setResetCounter] = useState(0);
   const [activeGroup, setActiveGroup] = useState<GroupId>('scan');
   const [guidanceMode, setGuidanceMode] = useState<GuidanceMode>('classic');
   const [showArrows, setShowArrows] = useState(true);
+  const [selectedJaw, setSelectedJaw] = useState<JawType>('upper');
 
   const handleReset = useCallback(() => {
     setResetCounter((c) => c + 1);
@@ -239,8 +248,38 @@ export default function ScanGuidancePage({ onBackToHome }: ScanGuidancePageProps
           })}
         </div>
 
-        {/* Right: Arrows toggle + Reset */}
+        {/* Right: Jaw selector + Arrows toggle + Reset */}
         <div style={{ display: 'flex', alignItems: 'center', gap: space[2] }}>
+          {/* Jaw selector */}
+          <div style={{
+            display: 'flex', border: `1px solid ${color.borderDefault}`,
+            borderRadius: radius.full, overflow: 'hidden',
+          }}>
+            {([
+              { id: 'upper' as JawType, label: 'Upper' },
+              { id: 'lower' as JawType, label: 'Lower' },
+              { id: 'bite' as JawType, label: 'Both' },
+            ]).map((j, i) => (
+              <button
+                key={j.id}
+                onClick={() => setSelectedJaw(j.id)}
+                style={{
+                  padding: '5px 12px',
+                  backgroundColor: selectedJaw === j.id ? color.primary : 'transparent',
+                  color: selectedJaw === j.id ? '#fff' : color.textSubtle,
+                  border: 'none',
+                  borderLeft: i > 0 ? `1px solid ${color.borderDefault}` : 'none',
+                  cursor: 'pointer', fontSize: font.size.sm,
+                  fontWeight: selectedJaw === j.id ? 600 : 500,
+                  transition: `all ${transition.fast}`,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {j.label}
+              </button>
+            ))}
+          </div>
+
           <button
             onClick={() => setShowArrows(v => !v)}
             style={{
@@ -308,7 +347,7 @@ export default function ScanGuidancePage({ onBackToHome }: ScanGuidancePageProps
 
       {/* Canvas area */}
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-        <ScanGuidanceViewer resetTrigger={resetCounter} guidanceMode={guidanceMode} showArrows={showArrows} />
+        <ScanGuidanceViewer resetTrigger={resetCounter} guidanceMode={guidanceMode} showArrows={showArrows} jaw={selectedJaw} />
       </div>
     </div>
   );

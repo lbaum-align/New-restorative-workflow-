@@ -231,6 +231,15 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
   const undoHistory = useUndoHistory();
   // Which undo UI variant: 1=ActionBar, 2=Timeline, 3=DirectToast, 4=List, 5=Filmstrip, 6=3DFilm
   const [undoVariant, setUndoVariant] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
+  // Undo panel position: 'left-bottom', 'center-bottom', 'under-toolbar'
+  type UndoPosition = 'left-bottom' | 'center-bottom' | 'under-toolbar';
+  const [undoPosition, setUndoPosition] = useState<UndoPosition>('left-bottom');
+  // Switcher panel visibility (toggle with 'E' key)
+  const [isSwitcherVisible, setIsSwitcherVisible] = useState(true);
+  // Draggable switcher position
+  const [switcherDragPos, setSwitcherDragPos] = useState<{ x: number; y: number } | null>(null);
+  const switcherDragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
+  const switcherRef = useRef<HTMLDivElement>(null);
 
   // Define tab configurations for each workflow
   const workflowTabConfigs: Record<WorkflowType, Array<{ id: string; label: string; type: "treatment" | "bite" | "pre-treatment" | "additional" }>> = {
@@ -265,6 +274,18 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
     setGuidanceResetCounter(c => c + 1);
     undoHistory.reset();
   }, [workflow]);
+
+  // 'E' key toggles the undo switcher visibility
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'e' || e.key === 'E') {
+        if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return;
+        setIsSwitcherVisible(v => !v);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Sync auto-detected workflow back to parent (e.g. when detected from toothTreatments on mount)
   useEffect(() => {
@@ -976,24 +997,62 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
           />
         </div>
 
-        {/* Undo variant switcher — only visible when undo tool is active */}
-        {isUndoPanelOpen && (
-          <div className={`absolute left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-sm border border-black/8 ${undoVariant === 1 || undoVariant === 2 || undoVariant === 5 || undoVariant === 6 || undoVariant === 8 ? 'bottom-20' : 'bottom-4'}`}>
-            <span className="text-[11px] text-[#8a8a8a] mr-1 font-medium">Undo UI:</span>
-            {([1, 2, 3, 4, 5, 6, 7, 8] as const).map(v => (
-              <button
-                key={v}
-                onClick={() => setUndoVariant(v)}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
-                  undoVariant === v
-                    ? 'bg-[#009ACE] text-white'
-                    : 'text-[#3E3D40] hover:bg-gray-100'
-                }`}
-              >
-                {v === 1 ? 'Bordered' : v === 2 ? 'Borderless' : v === 3 ? 'Compact' : v === 4 ? 'Labeled' : v === 5 ? 'Pill' : v === 6 ? 'Icons' : v === 7 ? 'Stacked' : 'H-Stack'}
-              </button>
-            ))}
-          </div>
+        {/* Undo variant switcher — draggable, toggle with 'E' key */}
+        {isUndoPanelOpen && isSwitcherVisible && (
+          <motion.div
+            ref={switcherRef}
+            drag
+            dragMomentum={false}
+            dragElastic={0}
+            onDragEnd={(_e, info) => {
+              setSwitcherDragPos(prev => ({
+                x: (prev?.x ?? 0) + info.offset.x,
+                y: (prev?.y ?? 0) + info.offset.y,
+              }));
+            }}
+            style={switcherDragPos ? { x: switcherDragPos.x, y: switcherDragPos.y } : undefined}
+            className={`absolute left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-1 bg-white/90 backdrop-blur-sm rounded-[16px] px-3 py-2 shadow-lg border border-black/8 cursor-grab active:cursor-grabbing ${undoVariant === 1 || undoVariant === 2 || undoVariant === 5 || undoVariant === 6 || undoVariant === 8 ? 'bottom-20' : 'bottom-4'}`}
+          >
+            {/* Drag handle */}
+            <div className="w-8 h-1 rounded-full bg-black/15 mb-0.5" />
+            {/* Variant row */}
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] text-[#8a8a8a] mr-1 font-medium">UI:</span>
+              {([1, 2, 3, 4, 5, 6, 7, 8] as const).map(v => (
+                <button
+                  key={v}
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={() => setUndoVariant(v)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                    undoVariant === v
+                      ? 'bg-[#009ACE] text-white'
+                      : 'text-[#3E3D40] hover:bg-gray-100'
+                  }`}
+                >
+                  {v === 1 ? 'Bordered' : v === 2 ? 'Borderless' : v === 3 ? 'Compact' : v === 4 ? 'Labeled' : v === 5 ? 'Pill' : v === 6 ? 'Icons' : v === 7 ? 'Stacked' : 'H-Stack'}
+                </button>
+              ))}
+            </div>
+            {/* Position row */}
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] text-[#8a8a8a] mr-1 font-medium">Pos:</span>
+              {(['left-bottom', 'center-bottom', 'under-toolbar'] as const).map(pos => (
+                <button
+                  key={pos}
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={() => setUndoPosition(pos)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                    undoPosition === pos
+                      ? 'bg-[#009ACE] text-white'
+                      : 'text-[#3E3D40] hover:bg-gray-100'
+                  }`}
+                >
+                  {pos === 'left-bottom' ? 'Left' : pos === 'center-bottom' ? 'Center' : 'Under toolbar'}
+                </button>
+              ))}
+            </div>
+            <span className="text-[9px] text-[#aaa] mt-0.5">Press E to hide</span>
+          </motion.div>
         )}
 
         {/* Wand Scan Button - Right side, bottom aligned (hidden in scan guidance mode, Copilot, and canvas theme mode) */}
@@ -1107,9 +1166,13 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
           )}
         </div>
 
-        {/* Undo panels — bottom left, same position as Prep Edit */}
+        {/* Undo panels — positioned based on undoPosition state */}
         {isUndoPanelOpen && (
-          <div className="absolute bottom-4 left-4 z-50">
+          <div className={`absolute z-50 ${
+            undoPosition === 'left-bottom' ? 'bottom-4 left-4' :
+            undoPosition === 'center-bottom' ? 'bottom-4 left-1/2 -translate-x-1/2' :
+            'top-[108px] right-4'
+          }`}>
             <AnimatePresence>
               {undoVariant === 1 && (
                 <UndoFilmstripChip

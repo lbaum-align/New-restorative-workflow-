@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CollapseButton from "../imports/CollapseButton";
 import IconsMonochrome from "../imports/IconsMonochrome";
@@ -27,6 +27,7 @@ export function ToolbarView({ onActiveToolChange }: ToolbarViewProps = {}) {
   const [isOcclusogramPanelOpen, setIsOcclusogramPanelOpen] = useState(false);
   const [isReviewPanelOpen, setIsReviewPanelOpen] = useState(false);
   const [isPrepQcBannerVisible, setIsPrepQcBannerVisible] = useState(false);
+  const toolbarRef = useRef<HTMLDivElement>(null);
 
   const tools = [
     { id: 0, component: IconsMonochrome, label: "Monochrome" },
@@ -89,8 +90,8 @@ export function ToolbarView({ onActiveToolChange }: ToolbarViewProps = {}) {
 
   return (
     <div className="flex flex-col gap-4 items-end">
-      {/* Toolbar */}
-      <motion.div 
+      <motion.div
+        ref={toolbarRef}
         className="bg-white rounded-[8px] p-2 w-fit flex items-stretch"
         layout
         transition={{
@@ -188,8 +189,8 @@ export function ToolbarView({ onActiveToolChange }: ToolbarViewProps = {}) {
 
       {/* Prep QC Banner - Shows below toolbar with 16px gap when Prep QC is active */}
       {isPrepQcPanelOpen && isPrepQcBannerVisible && (
-        <div className="h-[96px]" style={{ width: '484px' }}>
-          <div className="cursor-pointer" onClick={() => setIsPrepQcBannerVisible(false)}>
+        <div className="h-[116px]" style={{ width: toolbarRef.current?.offsetWidth ?? 'auto' }}>
+          <div className="cursor-pointer size-full" onClick={() => setIsPrepQcBannerVisible(false)}>
             <Banner />
           </div>
         </div>

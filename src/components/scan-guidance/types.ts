@@ -18,7 +18,8 @@ export type GuidanceMode = 'classic' | 'edge' | 'dot' | 'glow'
   | 'fagwand-orbit3d' | 'fagwand-nod3d' | 'fagwand-sweep3d' | 'fagwand-rock3d' | 'fagwand-tumble3d' | 'fagwand-wobble3d'
   | 'rot-cw' | 'rot-ccw' | 'rot-tilt'
   | 'scan-indicator'
-  | 'surface-guide';
+  | 'surface-guide'
+  | 'smart-nav';
 
 export type ScanStage = 'occlusal' | 'buccal' | 'lingual';
 

@@ -1,11 +1,26 @@
 import { useState } from "react";
 import svgPaths from "../imports/svg-bzvw4nbr6p";
-import imgScanBody1 from "figma:asset/4cd5d3a3be03d0b11f4cf3d7e7a7fa3aed8fc4eb.png";
-import imgScanBody2 from "figma:asset/f5a2ea12d94afbb7a7aa0f91d9bbc72ced832a4f.png";
-import imgScanBody3 from "figma:asset/c0e2f6b2fe52a14cce14c65ae974e1cd77a09c75.png";
-import imgScanBody4 from "figma:asset/81bfc59e2ea61e5f5c2c8ae7e0c455ec82f98a3a.png";
-import imgScanBody5 from "figma:asset/54d67e9bb6f67cf60cba67c565d7f0ee68ccef1c.png";
-import imgScanBody6 from "figma:asset/fe7b0eb774c8bcbba43b3abcc3d12a6e3e1b5d1e.png";
+
+// Fallback placeholder function for missing images
+const createPlaceholderSVG = (text: string) => {
+  const svg = `
+    <svg width="100" height="80" xmlns="http://www.w3.org/2000/svg">
+      <rect width="100%" height="100%" fill="#f0f0f0" stroke="#d0d0d0" stroke-width="2"/>
+      <text x="50%" y="50%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="10" fill="#666">
+        ${text}
+      </text>
+    </svg>
+  `;
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
+};
+
+// Create placeholder images for scan bodies
+const imgScanBody1 = createPlaceholderSVG("Scan Body 1");
+const imgScanBody2 = createPlaceholderSVG("Scan Body 2");
+const imgScanBody3 = createPlaceholderSVG("Scan Body 3");
+const imgScanBody4 = createPlaceholderSVG("Scan Body 4");
+const imgScanBody5 = createPlaceholderSVG("Scan Body 5");
+const imgScanBody6 = createPlaceholderSVG("Scan Body 6");
 
 interface ScanBodyType {
   id: string;

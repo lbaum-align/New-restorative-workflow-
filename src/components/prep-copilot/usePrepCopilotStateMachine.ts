@@ -71,17 +71,12 @@ export function usePrepCopilotStateMachine(isActive: boolean): StateMachineResul
     }, PHASE_DURATIONS.detecting);
 
     const t2 = setTimeout(() => {
-      setPhase('zooming');
-      setStatusText('Zooming to prep');
-    }, PHASE_DURATIONS.detecting + PHASE_DURATIONS.detected);
-
-    const t3 = setTimeout(() => {
       setPhase('analyzing');
       setStatusText('Running analysis...');
       startAnalysis();
-    }, PHASE_DURATIONS.detecting + PHASE_DURATIONS.detected + PHASE_DURATIONS.zooming);
+    }, PHASE_DURATIONS.detecting + PHASE_DURATIONS.detected);
 
-    timersRef.current.push(t1, t2, t3);
+    timersRef.current.push(t1, t2);
 
     return clearTimers;
   }, [isActive, clearTimers]);

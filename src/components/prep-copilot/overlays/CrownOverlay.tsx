@@ -7,20 +7,17 @@ interface CrownOverlayProps {
   visible: boolean;
 }
 
-// Crown sits on a right premolar tooth.
-// Real model data (centered, raw units): tooth cluster at ~345deg angle
-// avgPos raw ~(29, 3, -6), topY raw ~20.  At scale 0.055: (1.595, 0.165, -0.33), topY 1.1
-const CROWN_CENTER_RAW: [number, number, number] = [29, 2, -5];
-const S = 0.055;
+// Crown aligned to prep tooth (lower jaw)
+const PREP_TOOTH_CENTER: [number, number, number] = [-0.8, -0.2, -0.3];
 
 export default function CrownOverlay({ visible }: CrownOverlayProps) {
   const matRef = useRef<THREE.MeshPhysicalMaterial>(null);
   const startTimeRef = useRef<number | null>(null);
 
   const { crownGeo, crownPos, labelPos } = useMemo(() => {
-    const cx = CROWN_CENTER_RAW[0] * S;
-    const cy = CROWN_CENTER_RAW[1] * S;
-    const cz = CROWN_CENTER_RAW[2] * S;
+    const cx = PREP_TOOTH_CENTER[0];
+    const cy = PREP_TOOTH_CENTER[1];
+    const cz = PREP_TOOTH_CENTER[2];
 
     // Tooth dimensions in world coords (roughly 8mm wide, 10mm tall at this scale)
     const toothWidth = 0.04;   // half-width of the crown

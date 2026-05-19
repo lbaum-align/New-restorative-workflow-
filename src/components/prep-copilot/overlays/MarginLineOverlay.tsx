@@ -6,12 +6,9 @@ interface MarginLineOverlayProps {
   visible: boolean;
 }
 
-// Margin line traces around the same tooth as the crown (right premolar)
-// Raw model coords: tooth center at ~(29, 2, -5)
-const TOOTH_CENTER_RAW: [number, number, number] = [29, 2, -5];
-const S = 0.055;
-// Tooth is roughly 4mm radius in raw model space
-const TOOTH_RADIUS_RAW = 4.5;
+// Position on actual visible tooth (lower right first molar)
+const MOLAR_CENTER: [number, number, number] = [0.4, -0.08, -0.15];
+const MOLAR_RADIUS = 0.08;
 
 export default function MarginLineOverlay({ visible }: MarginLineOverlayProps) {
   const lineRef = useRef<THREE.Line>(null);
@@ -20,22 +17,21 @@ export default function MarginLineOverlay({ visible }: MarginLineOverlayProps) {
   const startTimeRef = useRef<number | null>(null);
 
   const { geometry, totalPoints } = useMemo(() => {
-    const cx = TOOTH_CENTER_RAW[0] * S;
-    const cy = TOOTH_CENTER_RAW[1] * S; // margin sits at the base of the crown
-    const cz = TOOTH_CENTER_RAW[2] * S;
-    const r = TOOTH_RADIUS_RAW * S;
+    const cx = MOLAR_CENTER[0];
+    const cy = MOLAR_CENTER[1];
+    const cz = MOLAR_CENTER[2];
+    const r = MOLAR_RADIUS;
 
-    const segments = 48;
+    const segments = 32; // Reduced for performance
     const pts: THREE.Vector3[] = [];
     for (let i = 0; i <= segments; i++) {
       const angle = (i / segments) * Math.PI * 2;
-      // Slight irregularity for organic feel
-      const wobble = 1 + Math.sin(angle * 3) * 0.06 + Math.cos(angle * 7) * 0.03;
-      const yWobble = Math.sin(angle * 5) * r * 0.08;
+      // Simple anatomical margin shape
+      const wobble = 1 + Math.sin(angle * 3) * 0.06;
       pts.push(new THREE.Vector3(
         cx + Math.cos(angle) * r * wobble,
-        cy + yWobble,
-        cz + Math.sin(angle) * r * wobble,
+        cy,
+        cz + Math.sin(angle) * r * wobble * 0.9, // Slightly oval
       ));
     }
 

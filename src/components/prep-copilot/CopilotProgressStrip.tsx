@@ -8,7 +8,7 @@ interface CopilotProgressStripProps {
 }
 
 export default function CopilotProgressStrip({ phase, progress, statusText }: CopilotProgressStripProps) {
-  const showStrip = phase === 'detecting' || phase === 'detected' || phase === 'zooming' || phase === 'analyzing';
+  const showStrip = phase === 'detecting' || phase === 'detected' || phase === 'analyzing';
 
   return (
     <AnimatePresence>
@@ -25,12 +25,6 @@ export default function CopilotProgressStrip({ phase, progress, statusText }: Co
           )}
           {phase === 'detected' && (
             <span className="w-2.5 h-2.5 rounded-full bg-[#00964E]" />
-          )}
-          {phase === 'zooming' && (
-            <svg className="animate-spin h-3.5 w-3.5 text-[#009ACE]" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
-              <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="opacity-75" />
-            </svg>
           )}
           {phase === 'analyzing' && (
             <div className="w-16 h-1.5 rounded-full bg-[#e5e7eb] overflow-hidden">

@@ -27,11 +27,9 @@ function getHeatmapColor(val: number): [number, number, number] {
   return [...last.color] as [number, number, number];
 }
 
-// In the centered model, teeth are in the outer ring of the arch (XZ distance > ~25 raw units).
-// Gingiva/palate is the inner area (XZ distance < ~20 raw units).
-// The transition zone is 20-25.
-const TEETH_INNER = 20; // raw units — below this = definitely gingiva
-const TEETH_OUTER = 25; // raw units — above this = definitely teeth
+// Focus heatmap on prep tooth area (lower jaw)
+const PREP_TOOTH_CENTER: [number, number, number] = [-0.8, -0.2, -0.3];
+const PREP_FOCUS_RADIUS = 0.4; // Only show heatmap within this radius of prep
 
 export default function ReductionHeatmap({ visible, isRescan, materialThresholds }: ReductionHeatmapProps) {
   const ctx = useModelContext();
@@ -53,24 +51,25 @@ export default function ReductionHeatmap({ visible, isRescan, materialThresholds
       const y = pos.getY(i);
       const z = pos.getZ(i);
 
-      // Distance from arch center in XZ plane (raw model units)
-      const distXZ = Math.sqrt(
-        (x - bounds.centerX) ** 2 +
-        (z - bounds.centerZ) ** 2
+      // Distance from prep tooth center
+      const distFromPrep = Math.sqrt(
+        (x - PREP_TOOTH_CENTER[0]) ** 2 +
+        (y - PREP_TOOTH_CENTER[1]) ** 2 +
+        (z - PREP_TOOTH_CENTER[2]) ** 2
       );
 
-      // Teeth mask: only color vertices on teeth (outer ring), not gingiva
-      let teethMask: number;
-      if (distXZ > TEETH_OUTER) {
-        teethMask = 1.0; // fully on teeth
-      } else if (distXZ > TEETH_INNER) {
-        teethMask = (distXZ - TEETH_INNER) / (TEETH_OUTER - TEETH_INNER); // transition
+      // Focus mask: only show heatmap near prep tooth
+      let focusMask: number;
+      if (distFromPrep < PREP_FOCUS_RADIUS * 0.7) {
+        focusMask = 1.0; // full intensity near prep
+      } else if (distFromPrep < PREP_FOCUS_RADIUS) {
+        focusMask = 1 - (distFromPrep - PREP_FOCUS_RADIUS * 0.7) / (PREP_FOCUS_RADIUS * 0.3); // fade out
       } else {
-        teethMask = 0.0; // gingiva — no heatmap
+        focusMask = 0.0; // no heatmap far from prep
       }
 
-      if (teethMask < 0.01) {
-        // Gingiva — keep transparent (white, won't show)
+      if (focusMask < 0.01) {
+        // Outside focus area — keep original tooth color
         targets[i * 3] = 1;
         targets[i * 3 + 1] = 1;
         targets[i * 3 + 2] = 1;
@@ -109,10 +108,10 @@ export default function ReductionHeatmap({ visible, isRescan, materialThresholds
       reduction = Math.max(0.2, Math.min(2.5, reduction));
 
       const [r, g, b] = getHeatmapColor(reduction);
-      // Blend toward white based on teeth mask (feather at gingiva boundary)
-      targets[i * 3] = 1 + (r - 1) * teethMask;
-      targets[i * 3 + 1] = 1 + (g - 1) * teethMask;
-      targets[i * 3 + 2] = 1 + (b - 1) * teethMask;
+      // Blend toward original color based on focus mask
+      targets[i * 3] = 1 + (r - 1) * focusMask;
+      targets[i * 3 + 1] = 1 + (g - 1) * focusMask;
+      targets[i * 3 + 2] = 1 + (b - 1) * focusMask;
 
       colors[i * 3] = 1;
       colors[i * 3 + 1] = 1;

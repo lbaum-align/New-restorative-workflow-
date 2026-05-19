@@ -11,52 +11,11 @@ import hdrUrl from '@/assets/lebombo_1k.hdr?url';
 
 const STONE_COLOR = new THREE.Color(0xe8e4dc);
 const STONE_SHEEN = new THREE.Color(0xf2f0ec);
-
-const CLIP_EDGE_COLOR = new THREE.Color(0xc8beb4);
-
-// 10 steps: each step reveals more of the model along the Z axis
-// Step 10 = full model (no clipping), Step 1 = only front sliver visible
-// The clip plane moves from front to back
-const CLIP_POSITIONS = [-4.0, -3.2, -2.4, -1.6, -0.8, 0.0, 0.8, 1.6, 2.4, 3.2];
 const TOTAL_STEPS = 10;
+const MESH_SCALE = 0.055;
 
-function ClippedPlyMesh({
-  url,
-  monochrome,
-  revealStep,
-}: {
-  url: string;
-  monochrome: boolean;
-  revealStep: number;
-}) {
-  const rawGeo = useLoader(PLYLoader, url);
-  const meshRef = useRef<THREE.Mesh>(null);
-  const clipPlaneRef = useRef(new THREE.Plane(new THREE.Vector3(0, 0, -1), 5));
-  const animatedConstant = useRef(5);
-
-  const clipPositions = CLIP_POSITIONS;
-
-  // Target clip position based on revealStep (1-10)
-  // Step 10 = no clip (constant = large positive), Step 1 = most clipped
-  const targetConstant = revealStep >= TOTAL_STEPS ? 100 : clipPositions[revealStep - 1];
-
-  useFrame((_, delta) => {
-    const speed = 4.0;
-    const diff = targetConstant - animatedConstant.current;
-    if (Math.abs(diff) > 0.01) {
-      animatedConstant.current += diff * Math.min(speed * delta * 3, 1);
-      clipPlaneRef.current.constant = animatedConstant.current;
-    }
-  });
-
-  useEffect(() => {
-    if (revealStep >= TOTAL_STEPS) {
-      animatedConstant.current = 100;
-      clipPlaneRef.current.constant = 100;
-    }
-  }, []);
-
-  const geometry = useMemo(() => {
+function usePreparedGeometry(rawGeo: THREE.BufferGeometry, monochrome: boolean) {
+  return useMemo(() => {
     const geo = rawGeo.clone();
     geo.center();
     geo.computeVertexNormals();
@@ -75,15 +34,24 @@ function ClippedPlyMesh({
 
     return geo;
   }, [rawGeo, monochrome]);
+}
 
-  const clippingPlanes = useMemo(() => [clipPlaneRef.current], []);
+function getClipConstantForStep(step: number, minZ: number, maxZ: number): number {
+  if (step >= TOTAL_STEPS) return maxZ + 50;
+  const range = maxZ - minZ;
+  if (range <= 0) return maxZ + 50;
+  return minZ + range * (step / TOTAL_STEPS);
+}
+
+/** Full model — no clipping (used for scan view and undo step 10). */
+function PlyMesh({ url, monochrome }: { url: string; monochrome: boolean }) {
+  const rawGeo = useLoader(PLYLoader, url);
+  const geometry = usePreparedGeometry(rawGeo, monochrome);
 
   if (monochrome) {
     return (
-      <mesh ref={meshRef} geometry={geometry} scale={0.055} rotation={[0.1, -0.4, 0]}>
+      <mesh geometry={geometry} scale={MESH_SCALE} rotation={[0.1, -0.4, 0]}>
         <meshPhysicalMaterial
-          key="stone-mat-clip"
-          vertexColors={false}
           color={STONE_COLOR}
           roughness={0.75}
           metalness={0.0}
@@ -96,17 +64,14 @@ function ClippedPlyMesh({
           sheen={0.15}
           sheenRoughness={0.8}
           sheenColor={STONE_SHEEN}
-          clippingPlanes={clippingPlanes}
-          clipShadows
         />
       </mesh>
     );
   }
 
   return (
-    <mesh ref={meshRef} geometry={geometry} scale={0.055} rotation={[0.1, -0.4, 0]}>
+    <mesh geometry={geometry} scale={MESH_SCALE} rotation={[0.1, -0.4, 0]}>
       <meshPhysicalMaterial
-        key="color-mat-clip"
         vertexColors
         roughness={0.4}
         metalness={0.0}
@@ -116,47 +81,73 @@ function ClippedPlyMesh({
         reflectivity={0.3}
         envMapIntensity={0.5}
         ior={1.3}
-        clippingPlanes={clippingPlanes}
-        clipShadows
       />
     </mesh>
   );
 }
 
-// Cross-section cap to show the "cut" surface
-function ClipCap({
+/** Partial reveal along Z for undo steps 1–9. */
+function ClippedPlyMesh({
+  url,
+  monochrome,
   revealStep,
 }: {
+  url: string;
+  monochrome: boolean;
   revealStep: number;
 }) {
-  const capRef = useRef<THREE.Mesh>(null);
-  const clipPositions = CLIP_POSITIONS;
-  const animatedZ = useRef(0);
+  const rawGeo = useLoader(PLYLoader, url);
+  const geometry = usePreparedGeometry(rawGeo, monochrome);
 
-  const targetZ = revealStep >= TOTAL_STEPS ? -999 : clipPositions[revealStep - 1];
+  const { minZ, maxZ } = useMemo(() => {
+    const box = new THREE.Box3().setFromBufferAttribute(
+      geometry.attributes.position as THREE.BufferAttribute
+    );
+    return { minZ: box.min.z, maxZ: box.max.z };
+  }, [geometry]);
+
+  const targetConstant = getClipConstantForStep(revealStep, minZ, maxZ);
+  const clipPlaneRef = useRef(new THREE.Plane(new THREE.Vector3(0, 0, -1), targetConstant));
+  const animatedConstant = useRef(targetConstant);
 
   useFrame((_, delta) => {
-    if (!capRef.current) return;
-    const diff = targetZ - animatedZ.current;
+    const diff = targetConstant - animatedConstant.current;
     if (Math.abs(diff) > 0.01) {
-      animatedZ.current += diff * Math.min(4.0 * delta * 3, 1);
+      animatedConstant.current += diff * Math.min(4.0 * delta * 3, 1);
+      clipPlaneRef.current.constant = animatedConstant.current;
     }
-    capRef.current.position.z = animatedZ.current * 0.055;
-    capRef.current.visible = revealStep < TOTAL_STEPS;
   });
 
-  if (revealStep >= TOTAL_STEPS) return null;
+  useEffect(() => {
+    animatedConstant.current = targetConstant;
+    clipPlaneRef.current.constant = targetConstant;
+  }, [targetConstant]);
+
+  const clippingPlanes = useMemo(() => [clipPlaneRef.current], []);
+
+  const materialProps = monochrome
+    ? {
+        vertexColors: false as const,
+        color: STONE_COLOR,
+        roughness: 0.75,
+        sheen: 0.15,
+        sheenColor: STONE_SHEEN,
+      }
+    : {
+        vertexColors: true as const,
+        roughness: 0.4,
+      };
 
   return (
-    <mesh ref={capRef} rotation={[0.1, -0.4, 0]}>
-      <planeGeometry args={[0.6, 0.4]} />
+    <mesh geometry={geometry} scale={MESH_SCALE} rotation={[0.1, -0.4, 0]}>
       <meshPhysicalMaterial
-        color={CLIP_EDGE_COLOR}
-        roughness={0.9}
-        metalness={0}
+        {...materialProps}
+        metalness={0.0}
         side={THREE.DoubleSide}
-        transparent
-        opacity={0.3}
+        envMapIntensity={monochrome ? 0.3 : 0.5}
+        ior={1.3}
+        clippingPlanes={clippingPlanes}
+        clipShadows
       />
     </mesh>
   );
@@ -165,14 +156,37 @@ function ClipCap({
 interface JawPlyViewerProps {
   jaw: 'upper' | 'lower' | 'bite';
   monochrome?: boolean;
-  revealStep?: number; // 1-10, where 10 = full model shown
+  revealStep?: number;
+}
+
+function SceneContent({
+  modelUrl,
+  monochrome,
+  revealStep,
+}: {
+  modelUrl: string;
+  monochrome: boolean;
+  revealStep: number;
+}) {
+  const useClipping = revealStep < TOTAL_STEPS;
+
+  return (
+    <Center>
+      {useClipping ? (
+        <ClippedPlyMesh url={modelUrl} monochrome={monochrome} revealStep={revealStep} />
+      ) : (
+        <PlyMesh url={modelUrl} monochrome={monochrome} />
+      )}
+    </Center>
+  );
 }
 
 export default function JawPlyViewer({ jaw, monochrome = false, revealStep = 10 }: JawPlyViewerProps) {
   const modelUrl = jaw === 'upper' ? upperJawUrl : jaw === 'lower' ? lowerJawUrl : biteUrl;
+  const useClipping = revealStep < TOTAL_STEPS;
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full min-h-[300px]">
       <Canvas
         camera={{ position: [0, 0, 14], fov: 35 }}
         gl={{
@@ -181,7 +195,7 @@ export default function JawPlyViewer({ jaw, monochrome = false, revealStep = 10 
           preserveDrawingBuffer: true,
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 0.7,
-          localClippingEnabled: true,
+          ...(useClipping ? { localClippingEnabled: true } : {}),
         }}
         dpr={[1, 2]}
         style={{ width: '100%', height: '100%' }}
@@ -194,10 +208,7 @@ export default function JawPlyViewer({ jaw, monochrome = false, revealStep = 10 
         <Environment files={hdrUrl} background={false} />
 
         <Suspense fallback={null}>
-          <Center>
-            <ClippedPlyMesh url={modelUrl} monochrome={monochrome} revealStep={revealStep} />
-            <ClipCap revealStep={revealStep} />
-          </Center>
+          <SceneContent modelUrl={modelUrl} monochrome={monochrome} revealStep={revealStep} />
         </Suspense>
 
         <OrbitControls

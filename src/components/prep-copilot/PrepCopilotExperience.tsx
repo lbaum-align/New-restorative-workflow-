@@ -1,21 +1,18 @@
 import { useCallback } from 'react';
-import { AnimatePresence } from 'framer-motion';
 import CopilotModelViewer from './CopilotModelViewer';
 import PrepCopilotPanel from './PrepCopilotPanel';
 import { usePrepCopilotStateMachine } from './usePrepCopilotStateMachine';
-import { useCameraViewAngle } from './useCameraViewAngle';
 import { MATERIAL_THRESHOLDS } from './constants';
 import type { ViewId, ZoneId } from './types';
 
 import MarginLineOverlay from './overlays/MarginLineOverlay';
 import CrownOverlay from './overlays/CrownOverlay';
-import ReductionHeatmap from './overlays/ReductionHeatmap';
 import InsertionPathArrow from './overlays/InsertionPathArrow';
 import UndercutHighlights from './overlays/UndercutHighlights';
 import PrepPulseOverlay from './overlays/PrepPulseOverlay';
 import ZoneOverlay from './overlays/ZoneOverlay';
-import ViewAngleLabel from './overlays/ViewAngleLabel';
 import CopilotProgressStrip from './CopilotProgressStrip';
+import ZoneHighlight from './overlays/ZoneHighlight';
 
 interface PrepCopilotExperienceProps {
   onClose: () => void;
@@ -24,11 +21,6 @@ interface PrepCopilotExperienceProps {
 
 export default function PrepCopilotExperience({ onClose, toolbarCollapsed = true }: PrepCopilotExperienceProps) {
   const { state, setActiveView, setSelectedMaterial, setSelectedZone, statusText } = usePrepCopilotStateMachine(true);
-  const { viewAngle, updateFromCamera } = useCameraViewAngle();
-
-  const handleCameraChange = useCallback((theta: number, phi: number) => {
-    updateFromCamera(theta, phi);
-  }, [updateFromCamera]);
 
   const handleViewChange = useCallback((view: ViewId) => {
     setActiveView(view);
@@ -43,30 +35,93 @@ export default function PrepCopilotExperience({ onClose, toolbarCollapsed = true
   const showPulse = phase === 'detecting' || phase === 'detected';
 
   return (
-    <>
-      {/* 3D Viewer — full screen, panel overlaps on right */}
-      <div className="absolute inset-0 z-[5]" style={{ pointerEvents: 'auto' }}>
-        <CopilotModelViewer onCameraChange={handleCameraChange}>
-          {/* Detection pulse */}
+    <div className="absolute inset-0 z-[15]">
+      <div className="absolute inset-0" style={{ pointerEvents: 'auto' }}>
+        <CopilotModelViewer>
+          {/* Zone-specific reduction analysis on molar */}
+          {(phase === 'analyzing' || phase === 'complete') && (
+            <group>
+              {/* Occlusal surface (top of tooth) */}
+              {(selectedZone === 'occlusal' || selectedZone === null) && (
+                <>
+                  <mesh position={[0.4, -0.05, -0.15]}>
+                    <sphereGeometry args={[0.04]} />
+                    <meshBasicMaterial color="#ff3333" transparent opacity={0.9} />
+                  </mesh>
+                  <mesh position={[0.42, -0.06, -0.12]}>
+                    <sphereGeometry args={[0.03]} />
+                    <meshBasicMaterial color="#ff9933" transparent opacity={0.8} />
+                  </mesh>
+                </>
+              )}
+              
+              {/* Buccal surface (cheek side) */}
+              {selectedZone === 'buccal' && (
+                <>
+                  <mesh position={[0.32, -0.08, -0.15]}>
+                    <sphereGeometry args={[0.035]} />
+                    <meshBasicMaterial color="#33ff33" transparent opacity={0.9} />
+                  </mesh>
+                  <mesh position={[0.3, -0.1, -0.18]}>
+                    <sphereGeometry args={[0.025]} />
+                    <meshBasicMaterial color="#ff9933" transparent opacity={0.8} />
+                  </mesh>
+                </>
+              )}
+              
+              {/* Lingual surface (tongue side) */}
+              {selectedZone === 'lingual' && (
+                <>
+                  <mesh position={[0.48, -0.08, -0.15]}>
+                    <sphereGeometry args={[0.035]} />
+                    <meshBasicMaterial color="#ff9933" transparent opacity={0.9} />
+                  </mesh>
+                  <mesh position={[0.5, -0.1, -0.12]}>
+                    <sphereGeometry args={[0.025]} />
+                    <meshBasicMaterial color="#33ff33" transparent opacity={0.8} />
+                  </mesh>
+                </>
+              )}
+              
+              {/* Mesial surface (front of tooth) */}
+              {selectedZone === 'mesial' && (
+                <>
+                  <mesh position={[0.4, -0.08, -0.08]}>
+                    <sphereGeometry args={[0.03]} />
+                    <meshBasicMaterial color="#33ff33" transparent opacity={0.9} />
+                  </mesh>
+                  <mesh position={[0.38, -0.1, -0.05]}>
+                    <sphereGeometry args={[0.02]} />
+                    <meshBasicMaterial color="#ff9933" transparent opacity={0.8} />
+                  </mesh>
+                </>
+              )}
+              
+              {/* Distal surface (back of tooth) */}
+              {selectedZone === 'distal' && (
+                <>
+                  <mesh position={[0.4, -0.08, -0.22]}>
+                    <sphereGeometry args={[0.03]} />
+                    <meshBasicMaterial color="#ff9933" transparent opacity={0.9} />
+                  </mesh>
+                  <mesh position={[0.42, -0.1, -0.25]}>
+                    <sphereGeometry args={[0.02]} />
+                    <meshBasicMaterial color="#33ff33" transparent opacity={0.8} />
+                  </mesh>
+                </>
+              )}
+            </group>
+          )}
+          
           <PrepPulseOverlay visible={showPulse} />
-
-          {/* Only one overlay at a time */}
           <MarginLineOverlay visible={activeView === 'margin'} />
-          <ReductionHeatmap visible={activeView === 'reduction'} materialThresholds={thresholds} />
           <InsertionPathArrow visible={activeView === 'insertion'} />
           <UndercutHighlights visible={activeView === 'undercuts'} />
           <ZoneOverlay visible={activeView === 'zones'} selectedZone={selectedZone} onZoneClick={handleZoneSelect} />
+          <ZoneHighlight visible={activeView === 'zones'} selectedZone={selectedZone} />
           <CrownOverlay visible={activeView === 'crown'} />
         </CopilotModelViewer>
 
-        {/* View angle label */}
-        <AnimatePresence>
-          {(phase === 'viewing' || phase === 'ready') && (
-            <ViewAngleLabel visible={true} angle={viewAngle} />
-          )}
-        </AnimatePresence>
-
-        {/* Progress strip */}
         <CopilotProgressStrip
           phase={phase}
           progress={state.overallProgress}
@@ -74,7 +129,6 @@ export default function PrepCopilotExperience({ onClose, toolbarCollapsed = true
         />
       </div>
 
-      {/* Side Panel */}
       <PrepCopilotPanel
         onClose={onClose}
         state={state}
@@ -84,6 +138,6 @@ export default function PrepCopilotExperience({ onClose, toolbarCollapsed = true
         onZoneSelect={handleZoneSelect}
         toolbarCollapsed={toolbarCollapsed}
       />
-    </>
+    </div>
   );
 }

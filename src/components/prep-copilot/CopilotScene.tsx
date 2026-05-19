@@ -1,13 +1,13 @@
 import React, { useRef, useMemo, useEffect, createContext, useContext } from 'react';
-import { useFrame, useLoader } from '@react-three/fiber';
-import { OrbitControls, Center, Environment } from '@react-three/drei';
+import { useLoader, useFrame } from '@react-three/fiber';
+import { OrbitControls, Environment } from '@react-three/drei';
 import { PLYLoader } from 'three-stdlib';
 import * as THREE from 'three';
 import hdrUrl from '@/assets/lebombo_1k.hdr?url';
-import upperJawModel from '@/assets/3d-models/Upper Jaw .ply?url';
+import lowerJawUrl from '@/assets/3d-models/Lower Jaw.ply?url';
 
-const BASE_ROT_X = Math.PI * 0.6;
-const BASE_ROT_Z = Math.PI;
+const MESH_SCALE = 0.055;
+const MESH_ROTATION: [number, number, number] = [0.1, -0.4, 0];
 
 export interface ModelBounds {
   minX: number; maxX: number;
@@ -25,137 +25,100 @@ export function useModelContext() {
   return useContext(ModelContext);
 }
 
-interface CopilotSceneProps {
-  onCameraChange?: (theta: number, phi: number) => void;
-  children?: React.ReactNode;
-}
-
-export default function CopilotScene({ onCameraChange, children }: CopilotSceneProps) {
-  const geometry = useLoader(PLYLoader, upperJawModel);
-  const groupRef = useRef<THREE.Group>(null);
-  const controlsRef = useRef<any>(null);
-
-  const { enhancedGeo, bounds } = useMemo(() => {
-    const geo = geometry.clone();
+function usePreparedGeometry(rawGeo: THREE.BufferGeometry) {
+  return useMemo(() => {
+    const geo = rawGeo.clone();
     geo.center();
     geo.computeVertexNormals();
 
-    const pos = geo.attributes.position;
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-    let minZ = Infinity, maxZ = -Infinity;
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-      minX = Math.min(minX, x); maxX = Math.max(maxX, x);
-      minY = Math.min(minY, y); maxY = Math.max(maxY, y);
-      minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z);
-    }
-
-    const hasColors = geo.attributes.color !== undefined;
-    const col = new Float32Array(pos.count * 3);
-    for (let i = 0; i < pos.count; i++) {
-      let r: number, g: number, b: number;
-      if (hasColors) {
-        r = geo.attributes.color.getX(i);
-        g = geo.attributes.color.getY(i);
-        b = geo.attributes.color.getZ(i);
-        const avg = (r + g + b) / 3;
-        r = ((r - avg) * 1.4 + avg) * 1.35 * 0.65;
-        g = ((g - avg) * 1.4 + avg) * 1.35 * 0.65;
-        b = ((b - avg) * 1.4 + avg) * 1.35 * 0.65;
-      } else {
-        r = 0.9; g = 0.85; b = 0.8;
+    const colors = geo.attributes.color;
+    if (colors) {
+      for (let i = 0; i < colors.count; i++) {
+        let r = colors.getX(i), g = colors.getY(i), b = colors.getZ(i);
+        r = Math.min(1, r * 1.4 + 0.15);
+        g = Math.min(1, g * 1.4 + 0.15);
+        b = Math.min(1, b * 1.4 + 0.15);
+        colors.setXYZ(i, r, g, b);
       }
-      col[i * 3] = Math.min(1, Math.max(0, r));
-      col[i * 3 + 1] = Math.min(1, Math.max(0, g));
-      col[i * 3 + 2] = Math.min(1, Math.max(0, b));
+      colors.needsUpdate = true;
     }
-    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
 
-    const b: ModelBounds = {
-      minX, maxX, minY, maxY, minZ, maxZ,
-      centerX: (minX + maxX) / 2,
-      centerY: (minY + maxY) / 2,
-      centerZ: (minZ + maxZ) / 2,
-    };
+    return geo;
+  }, [rawGeo]);
+}
 
-    return { enhancedGeo: geo, bounds: b };
-  }, [geometry]);
+function computeBounds(geo: THREE.BufferGeometry): ModelBounds {
+  const pos = geo.attributes.position;
+  let minX = Infinity, maxX = -Infinity;
+  let minY = Infinity, maxY = -Infinity;
+  let minZ = Infinity, maxZ = -Infinity;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+    minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z);
+  }
+  return {
+    minX, maxX, minY, maxY, minZ, maxZ,
+    centerX: (minX + maxX) / 2,
+    centerY: (minY + maxY) / 2,
+    centerZ: (minZ + maxZ) / 2,
+  };
+}
 
-  useEffect(() => {
-    if (groupRef.current) {
-      groupRef.current.rotation.set(BASE_ROT_X, 0, BASE_ROT_Z);
-    }
-  }, []);
+interface CopilotSceneProps {
+  children?: React.ReactNode;
+}
 
-  useFrame(() => {
-    if (controlsRef.current && onCameraChange) {
-      const theta = controlsRef.current.getAzimuthalAngle();
-      const phi = controlsRef.current.getPolarAngle();
-      onCameraChange(theta, phi);
-    }
-  });
+export default function CopilotScene({ children }: CopilotSceneProps) {
+  const rawGeo = useLoader(PLYLoader, lowerJawUrl);
+  const geometry = usePreparedGeometry(rawGeo);
+  const bounds = useMemo(() => computeBounds(geometry), [geometry]);
+  const controlsRef = useRef<React.ComponentRef<typeof OrbitControls>>(null);
 
-  const modelCtx = useMemo(() => ({ bounds, geometry: enhancedGeo }), [bounds, enhancedGeo]);
+  const modelCtx = useMemo(() => ({ bounds, geometry }), [bounds, geometry]);
 
   return (
     <>
-      <color attach="background" args={['#d6e7f1']} />
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[5, 8, 5]} intensity={0.8} castShadow color="#f5f0e8" />
-      <directionalLight position={[-5, 5, -5]} intensity={0.35} color="#e8eef5" />
-      <directionalLight position={[0, -3, 5]} intensity={0.25} />
-      <directionalLight position={[0, 5, -5]} intensity={0.2} />
-      <pointLight position={[0, 10, 0]} intensity={0.2} color="#fff5e6" />
-      <pointLight position={[3, 0, 3]} intensity={0.15} color="#e6f0ff" />
+      <ambientLight intensity={0.3} />
+      <directionalLight position={[5, 8, 5]} intensity={0.9} color="#ffffff" />
+      <directionalLight position={[-5, 5, -5]} intensity={0.4} color="#f0f5ff" />
+      <directionalLight position={[0, -3, 5]} intensity={0.3} />
+      <pointLight position={[0, 10, 0]} intensity={0.2} color="#ffffff" />
       <Environment files={hdrUrl} background={false} />
 
-      <Center>
-        <group ref={groupRef}>
-          <mesh geometry={enhancedGeo} scale={0.055}>
-            <meshPhysicalMaterial
-              vertexColors={true}
-              color={new THREE.Color(0xc8c8c0)}
-              roughness={0.35}
-              metalness={0.02}
-              side={THREE.DoubleSide}
-              clearcoat={0.4}
-              clearcoatRoughness={0.25}
-              reflectivity={0.5}
-              envMapIntensity={0.6}
-              ior={1.45}
-              sheen={0.1}
-              sheenRoughness={0.4}
-              sheenColor={new THREE.Color(0xe8e8e0)}
-            />
-          </mesh>
-          <ModelContext.Provider value={modelCtx}>
-            {children}
-          </ModelContext.Provider>
-        </group>
-      </Center>
+      <mesh geometry={geometry} scale={MESH_SCALE} rotation={MESH_ROTATION}>
+        <meshPhysicalMaterial
+          vertexColors
+          roughness={0.4}
+          metalness={0.0}
+          side={THREE.DoubleSide}
+          clearcoat={0.15}
+          clearcoatRoughness={0.4}
+          reflectivity={0.3}
+          envMapIntensity={0.5}
+          ior={1.3}
+        />
+      </mesh>
+      <ModelContext.Provider value={modelCtx}>
+        {children}
+      </ModelContext.Provider>
 
       <OrbitControls
         ref={controlsRef}
-        enablePan={true}
-        enableZoom={true}
-        enableRotate={true}
-        mouseButtons={{
-          LEFT: THREE.MOUSE.ROTATE,
-          MIDDLE: THREE.MOUSE.DOLLY,
-          RIGHT: THREE.MOUSE.PAN,
-        }}
+        makeDefault
+        enablePan
+        enableZoom
+        enableRotate
         rotateSpeed={1.5}
-        zoomSpeed={1.2}
+        zoomSpeed={1.0}
         panSpeed={0.8}
-        enableDamping={true}
-        dampingFactor={0.12}
-        minDistance={0.5}
-        maxDistance={10}
+        enableDamping
+        dampingFactor={0.08}
+        minDistance={3}
+        maxDistance={25}
         minPolarAngle={0.1}
         maxPolarAngle={Math.PI - 0.1}
-        target={[0, 0, 0]}
-        makeDefault
       />
     </>
   );

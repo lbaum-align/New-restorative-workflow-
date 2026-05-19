@@ -120,6 +120,15 @@ export default function App() {
         case 'h':
           goHome();
           break;
+
+        case 's':
+          // Quick test: jump to scan page with demo patient and crown workflow
+          setCurrentView('flow');
+          setFlowStep('scanMultiLayer');
+          setSelectedPatient({ id: 'demo', firstName: 'Demo', lastName: 'Patient', dateOfBirth: '1990-01-01', gender: 'male', chartNumber: '12345' });
+          setSelectedScanType('crown');
+          setToothTreatments({'14': 'Crown'});
+          break;
       }
     };
 

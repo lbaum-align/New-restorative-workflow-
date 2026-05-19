@@ -6,18 +6,17 @@ interface InsertionPathArrowProps {
   visible: boolean;
 }
 
-// Insertion arrow goes through the same tooth as the crown
-const TOOTH_CENTER_RAW: [number, number, number] = [29, 2, -5];
-const S = 0.055;
+// Position on actual visible tooth (lower right first molar)
+const MOLAR_CENTER: [number, number, number] = [0.4, -0.08, -0.15];
 
 export default function InsertionPathArrow({ visible }: InsertionPathArrowProps) {
   const groupRef = useRef<THREE.Group>(null);
   const startTimeRef = useRef<number | null>(null);
-
-  const cx = TOOTH_CENTER_RAW[0] * S;
-  const topY = 20 * S; // top of tooth in raw units
-  const cz = TOOTH_CENTER_RAW[2] * S;
-  const arrowLength = 18 * S; // arrow length in raw model scale
+  
+  const cx = MOLAR_CENTER[0];
+  const topY = MOLAR_CENTER[1] + 0.25;
+  const cz = MOLAR_CENTER[2];
+  const arrowLength = 0.2;
 
   useFrame(() => {
     if (!visible || !groupRef.current) {

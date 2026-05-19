@@ -991,6 +991,10 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
             onUndoPanelOpenChange={(isOpen, closeHandler) => {
               setIsUndoPanelOpen(isOpen);
               undoPanelCloseRef.current = closeHandler ?? null;
+              if (isOpen) {
+                setRevealStep(TOTAL_REVEAL_STEPS);
+                setCurrentJaw((prev) => prev ?? 'upper');
+              }
             }}
             undoState={{
               canUndo: revealStep > 1,
@@ -1287,7 +1291,7 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
         )}
 
         {/* Center Area - Scanning Animation and 3D Model (only shown in normal test flow) */}
-        <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${enableScanGuidance || isCopilotActive ? 'hidden' : ''}`}>
+        <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${enableScanGuidance || isCopilotActive ? 'hidden' : ''} ${isUndoPanelOpen ? 'z-[5]' : 'z-0'}`}>
           {/* 3D Teeth Model - Show when scanning, jaw scanned, or undo panel is open */}
           {(isScanning || isUndoPanelOpen || (currentJaw && (
             currentJaw === 'bite'
@@ -1306,9 +1310,10 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
             
             return (
               <motion.div
-                initial={{ opacity: isRestoringRef.current ? 1 : 0 }}
+                initial={{ opacity: isRestoringRef.current || isUndoPanelOpen ? 1 : 0 }}
                 animate={{ opacity: isScanning ? scanProgress / 100 : 1 }}
-                key={`${currentJaw}-${activeTabId}-${isLeftLateralActive ? 'left-lateral' : ''}`}
+                transition={{ opacity: { duration: isUndoPanelOpen ? 0 : 0.3 } }}
+                key={`${currentJaw}-${activeTabId}-${isUndoPanelOpen ? 'undo' : 'scan'}-${isLeftLateralActive ? 'left-lateral' : ''}`}
                 className="absolute inset-0 pointer-events-auto"
               >
                 <JawPlyViewer jaw={currentJaw || 'upper'} monochrome={isMonochrome} revealStep={revealStep} />

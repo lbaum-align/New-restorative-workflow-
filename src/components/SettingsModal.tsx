@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import teethModelImg from "../assets/Clincheck weave model.png";
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -297,7 +298,7 @@ function MainPage({ onNavigate, canvasBg, onCanvasBgChange }: { onNavigate: (pag
 
 function VariantCards({ canvasBg, onCanvasBgChange }: { canvasBg: string; onCanvasBgChange?: (color: string) => void }) {
   return (
-    <div className="flex gap-[12px]">
+    <div className="grid grid-cols-2 gap-[12px]">
       {BG_THEMES.map((theme) => {
         const isSelected = canvasBg === theme.color;
         const isDark = theme.color !== '#D6E7F1' && theme.color !== '#F7F7F7';
@@ -305,37 +306,40 @@ function VariantCards({ canvasBg, onCanvasBgChange }: { canvasBg: string; onCanv
           <button
             key={theme.color}
             onClick={() => onCanvasBgChange?.(theme.color)}
-            className="flex flex-col items-center gap-[8px] cursor-pointer group"
-            style={{ minWidth: 60 }}
+            className="flex flex-col items-center gap-[8px] cursor-pointer group w-full"
           >
             <div
-              className={`w-[160px] h-[100px] rounded-[10px] border-[2.5px] transition-all relative overflow-hidden ${
+              className={`w-full h-[200px] rounded-[10px] border-[2.5px] transition-all relative overflow-hidden ${
                 isSelected ? 'border-[#009ACE] shadow-[0_0_0_2px_rgba(0,154,206,0.2)]' : 'border-[#d1d1d1] group-hover:border-[#a0a0a0]'
               }`}
               style={{ backgroundColor: theme.color }}
             >
-              {/* Skeleton of the View page */}
-              <div className="absolute inset-0 p-[5px] flex flex-col">
-                {/* Header */}
-                <div className="h-[7px] rounded-[2px] w-full" style={{ backgroundColor: isDark ? '#ffffff' : '#3e3d40', opacity: 0.2 }} />
+              {/* View page skeleton */}
+              <div className="absolute inset-0 p-[6px] flex flex-col">
+                {/* Header bar */}
+                <div className="h-[8px] rounded-[2px] w-full" style={{ backgroundColor: isDark ? '#ffffff' : '#3e3d40', opacity: 0.15 }} />
                 {/* Body */}
                 <div className="flex-1 relative">
-                  {/* Top-left layer panel */}
-                  <div className="absolute top-[4px] left-0 w-[30px] flex flex-col gap-[2px]">
-                    <div className="h-[4px] w-full rounded-[1px]" style={{ backgroundColor: isDark ? '#ffffff' : '#3e3d40', opacity: 0.2 }} />
-                    <div className="h-[4px] w-[22px] rounded-[1px]" style={{ backgroundColor: isDark ? '#ffffff' : '#3e3d40', opacity: 0.15 }} />
+                  {/* Left layer panel skeleton */}
+                  <div className="absolute top-[6px] left-[2px] w-[28px] flex flex-col gap-[3px]">
+                    <div className="h-[5px] w-full rounded-[1px]" style={{ backgroundColor: isDark ? '#ffffff' : '#3e3d40', opacity: 0.18 }} />
+                    <div className="h-[5px] w-[20px] rounded-[1px]" style={{ backgroundColor: isDark ? '#ffffff' : '#3e3d40', opacity: 0.12 }} />
+                    <div className="h-[5px] w-[24px] rounded-[1px]" style={{ backgroundColor: isDark ? '#ffffff' : '#3e3d40', opacity: 0.10 }} />
                   </div>
-                  {/* Top-right toolbar */}
-                  <div className="absolute top-[4px] right-0 flex gap-[2px]">
-                    <div className="w-[7px] h-[7px] rounded-[2px]" style={{ backgroundColor: isDark ? '#ffffff' : '#3e3d40', opacity: 0.2 }} />
-                    <div className="w-[7px] h-[7px] rounded-[2px]" style={{ backgroundColor: isDark ? '#ffffff' : '#3e3d40', opacity: 0.2 }} />
-                    <div className="w-[7px] h-[7px] rounded-[2px]" style={{ backgroundColor: isDark ? '#ffffff' : '#3e3d40', opacity: 0.2 }} />
+                  {/* Right toolbar skeleton */}
+                  <div className="absolute top-[6px] right-[2px] flex gap-[2px]">
+                    <div className="w-[8px] h-[8px] rounded-[2px]" style={{ backgroundColor: isDark ? '#ffffff' : '#3e3d40', opacity: 0.18 }} />
+                    <div className="w-[8px] h-[8px] rounded-[2px]" style={{ backgroundColor: isDark ? '#ffffff' : '#3e3d40', opacity: 0.18 }} />
+                    <div className="w-[8px] h-[8px] rounded-[2px]" style={{ backgroundColor: isDark ? '#ffffff' : '#3e3d40', opacity: 0.18 }} />
+                    <div className="w-[8px] h-[8px] rounded-[2px]" style={{ backgroundColor: isDark ? '#ffffff' : '#3e3d40', opacity: 0.18 }} />
                   </div>
-                  {/* Center 3D model - arch shape */}
+                  {/* Center teeth model */}
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <svg width="48" height="40" viewBox="0 0 48 40" fill="none">
-                      <path d="M12 28C12 28 14 14 24 12C34 14 36 28 36 28" stroke={isDark ? '#ffffff' : '#3e3d40'} strokeWidth="3" strokeLinecap="round" opacity="0.25" fill="none"/>
-                    </svg>
+                    <img
+                      src={teethModelImg}
+                      alt="Dental model"
+                      className="max-w-[45%] max-h-[45%] object-contain drop-shadow-md"
+                    />
                   </div>
                 </div>
               </div>

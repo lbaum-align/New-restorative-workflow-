@@ -3,10 +3,12 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useModelContext } from '../CopilotScene';
 import { HEATMAP_COLORS } from '../constants';
+import type { MaterialThresholds } from '../types';
 
 interface ReductionHeatmapProps {
   visible: boolean;
   isRescan?: boolean;
+  materialThresholds?: MaterialThresholds;
 }
 
 function getHeatmapColor(val: number): [number, number, number] {
@@ -31,7 +33,7 @@ function getHeatmapColor(val: number): [number, number, number] {
 const TEETH_INNER = 20; // raw units — below this = definitely gingiva
 const TEETH_OUTER = 25; // raw units — above this = definitely teeth
 
-export default function ReductionHeatmap({ visible, isRescan }: ReductionHeatmapProps) {
+export default function ReductionHeatmap({ visible, isRescan, materialThresholds }: ReductionHeatmapProps) {
   const ctx = useModelContext();
   const matRef = useRef<THREE.MeshBasicMaterial>(null);
   const startTimeRef = useRef<number | null>(null);

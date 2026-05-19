@@ -72,12 +72,12 @@ export default function JawModelScene({
 
   return (
     <>
-      <ambientLight intensity={0.15} />
-      <directionalLight position={[5, 8, 5]} intensity={0.8} castShadow color="#f5f0e8" />
-      <directionalLight position={[-5, 5, -5]} intensity={0.35} color="#e8eef5" />
-      <directionalLight position={[0, -3, 5]} intensity={0.25} />
+      <ambientLight intensity={0.3} />
+      <directionalLight position={[5, 8, 5]} intensity={0.9} castShadow color="#ffffff" />
+      <directionalLight position={[-5, 5, -5]} intensity={0.4} color="#f0f5ff" />
+      <directionalLight position={[0, -3, 5]} intensity={0.3} />
       <directionalLight position={[0, 5, -5]} intensity={0.2} />
-      <pointLight position={[0, 10, 0]} intensity={0.2} color="#fff5e6" />
+      <pointLight position={[0, 10, 0]} intensity={0.2} color="#ffffff" />
       <pointLight position={[3, 0, 3]} intensity={0.15} color="#e6f0ff" />
       <Environment files={hdrUrl} background={false} />
 

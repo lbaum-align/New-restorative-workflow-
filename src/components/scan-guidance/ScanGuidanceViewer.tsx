@@ -235,72 +235,50 @@ function Scene({ onGuidanceUpdate, onReset, guidanceMode, lockModel, isScanningR
       {
         const rangeX = bounds.maxX - bounds.minX;
         const rangeZ = bounds.maxZ - bounds.minZ;
-        const sp = scanPlaneRef.current;
-        if (!sp) return;
 
-        // The silhouette is nearly centered — tiny pointer bias
-        const silCenterX = pointer.x * 0.02;
-        const silCenterY = pointer.y * 0.02;
+        // === XZ Plane Projection — no raycasting against geometry ===
+        // Project pointer ray onto the model-local XZ plane at surfaceY.
+        // This always works regardless of camera angle — no triangle gaps or ring artifacts.
 
-        // NDC extents of the silhouette rectangle on screen
-        const ndcHalfW = 0.12;
-        const ndcHalfH = 0.20;
-        const sampleNDC = new THREE.Vector2();
+        const invMatrix = new THREE.Matrix4().copy(mesh.matrixWorld).invert();
 
-        // Sample a grid across the silhouette — raycast against the scan box
-        // then convert hit point to mesh-local space for painting
-        const SAMPLES = 4;
-        for (let si = 0; si < SAMPLES; si++) {
-          for (let sj = 0; sj < SAMPLES; sj++) {
-            const u = (si / (SAMPLES - 1)) * 2 - 1;
-            const v = (sj / (SAMPLES - 1)) * 2 - 1;
-            sampleNDC.set(silCenterX + u * ndcHalfW, silCenterY + v * ndcHalfH);
+        // Helper: project an NDC point onto the local XZ plane, returns {x, z} or null
+        const projectToXZ = (ndcX: number, ndcY: number): { x: number; z: number } | null => {
+          raycaster.current.setFromCamera({ x: ndcX, y: ndcY } as THREE.Vector2, camera);
+          const ro = raycaster.current.ray.origin.clone().applyMatrix4(invMatrix);
+          const rd = raycaster.current.ray.direction.clone().transformDirection(invMatrix).normalize();
+          if (Math.abs(rd.y) < 0.0001) return null; // parallel to plane
+          const t = (bounds.surfaceY - ro.y) / rd.y;
+          if (t <= 0) return null; // behind camera
+          return { x: ro.x + rd.x * t, z: ro.z + rd.z * t };
+        };
 
-            raycaster.current.setFromCamera(sampleNDC, camera);
-            const hits = raycaster.current.intersectObject(sp, false);
-            if (hits.length > 0) {
-              const localPt = mesh.worldToLocal(hits[0].point.clone());
-              const brushX = rangeX * 0.14;
-              const brushZ = rangeZ * 0.14;
-              captureRect(
-                localPt.x - brushX, localPt.x + brushX,
-                localPt.z - brushZ, localPt.z + brushZ,
-                bounds,
-              );
+        // Main brush at pointer
+        const hit = projectToXZ(pointer.x, pointer.y);
+        if (hit) {
+          const brushX = rangeX * 0.12;
+          const brushZ = rangeZ * 0.12;
+          captureRect(hit.x - brushX, hit.x + brushX, hit.z - brushZ, hit.z + brushZ, bounds);
+
+          // Cross pattern around center for wider coverage
+          const offsets = [
+            { dx: 0.04, dy: 0 }, { dx: -0.04, dy: 0 },
+            { dx: 0, dy: 0.04 }, { dx: 0, dy: -0.04 },
+          ];
+          for (const { dx, dy } of offsets) {
+            const oh = projectToXZ(pointer.x + dx, pointer.y + dy);
+            if (oh) {
+              const bx = rangeX * 0.09;
+              const bz = rangeZ * 0.09;
+              captureRect(oh.x - bx, oh.x + bx, oh.z - bz, oh.z + bz, bounds);
             }
           }
         }
 
-        // Random samples for smooth organic fill
-        for (let r = 0; r < 8; r++) {
-          const angle = Math.random() * Math.PI * 2;
-          const dist = Math.random();
-          sampleNDC.set(
-            silCenterX + Math.cos(angle) * ndcHalfW * dist,
-            silCenterY + Math.sin(angle) * ndcHalfH * dist,
-          );
-          raycaster.current.setFromCamera(sampleNDC, camera);
-          const hits = raycaster.current.intersectObject(sp, false);
-          if (hits.length > 0) {
-            const localPt = mesh.worldToLocal(hits[0].point.clone());
-            const brushX = rangeX * 0.10;
-            const brushZ = rangeZ * 0.10;
-            captureRect(
-              localPt.x - brushX, localPt.x + brushX,
-              localPt.z - brushZ, localPt.z + brushZ,
-              bounds,
-            );
-          }
-        }
-
-        // Determine active region from center hit
-        sampleNDC.set(silCenterX, silCenterY);
-        raycaster.current.setFromCamera(sampleNDC, camera);
-        const centerHits = raycaster.current.intersectObject(sp, false);
-        if (centerHits.length > 0) {
-          const lp = mesh.worldToLocal(centerHits[0].point.clone());
-          const rnx = (lp.x - bounds.minX) / rangeX;
-          const rnz = (lp.z - bounds.minZ) / rangeZ;
+        // Determine active region from the hit point
+        if (hit) {
+          const rnx = (hit.x - bounds.minX) / rangeX;
+          const rnz = (hit.z - bounds.minZ) / rangeZ;
           if      (rnx < 0.5 && rnz < 0.5) currentRegionRef.current = 'upper-left';
           else if (rnx >= 0.5 && rnz < 0.5) currentRegionRef.current = 'upper-right';
           else if (rnx < 0.5)              currentRegionRef.current = 'lower-left';

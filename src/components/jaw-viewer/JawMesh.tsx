@@ -3,8 +3,8 @@ import { useLoader } from '@react-three/fiber';
 import { PLYLoader } from 'three-stdlib';
 import * as THREE from 'three';
 
-const STONE_COLOR = new THREE.Color(0xd4d0c8);
-const STONE_SHEEN = new THREE.Color(0xe8e8e0);
+const STONE_COLOR = new THREE.Color(0xe8e4dc);
+const STONE_SHEEN = new THREE.Color(0xf2f0ec);
 
 interface JawMeshProps {
   url: string;
@@ -41,6 +41,7 @@ export default function JawMesh({
   if (monochrome) {
     return (
       <mesh
+        key="monochrome"
         geometry={geometry}
         scale={scale}
         position={position}
@@ -48,17 +49,19 @@ export default function JawMesh({
         renderOrder={isTransparent ? 1 : 0}
       >
         <meshPhysicalMaterial
+          key="stone-mat"
+          vertexColors={false}
           color={STONE_COLOR}
-          roughness={0.45}
+          roughness={0.75}
           metalness={0.0}
           side={THREE.DoubleSide}
-          clearcoat={0.2}
-          clearcoatRoughness={0.3}
-          reflectivity={0.4}
-          envMapIntensity={0.5}
-          ior={1.4}
-          sheen={0.1}
-          sheenRoughness={0.5}
+          clearcoat={0.05}
+          clearcoatRoughness={0.8}
+          reflectivity={0.15}
+          envMapIntensity={0.3}
+          ior={1.3}
+          sheen={0.15}
+          sheenRoughness={0.8}
           sheenColor={STONE_SHEEN}
           transparent={isTransparent}
           opacity={opacity}
@@ -70,6 +73,7 @@ export default function JawMesh({
 
   return (
     <mesh
+      key="colored"
       geometry={geometry}
       scale={scale}
       position={position}
@@ -77,6 +81,7 @@ export default function JawMesh({
       renderOrder={isTransparent ? 1 : 0}
     >
       <meshPhysicalMaterial
+        key="color-mat"
         vertexColors
         roughness={0.3}
         metalness={0.0}

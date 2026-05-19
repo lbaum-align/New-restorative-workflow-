@@ -50,6 +50,7 @@
     "sonner": "^2.0.3",
     "tailwind-merge": "*",
     "three": "^0.170.0",
+    "three-mesh-bvh": "^0.9.10",
     "three-stdlib": "^2.36.1",
     "tw-animate-css": "^1.3.8",
     "vaul": "^1.1.2"

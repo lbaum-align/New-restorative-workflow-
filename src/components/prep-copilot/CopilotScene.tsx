@@ -1,5 +1,5 @@
 import React, { useRef, useMemo, useEffect, createContext, useContext } from 'react';
-import { useFrame, useLoader, useThree } from '@react-three/fiber';
+import { useFrame, useLoader } from '@react-three/fiber';
 import { OrbitControls, Center, Environment } from '@react-three/drei';
 import { PLYLoader } from 'three-stdlib';
 import * as THREE from 'three';
@@ -16,7 +16,6 @@ export interface ModelBounds {
   centerX: number; centerY: number; centerZ: number;
 }
 
-// Context so overlay children can access model bounds and geometry
 export const ModelContext = createContext<{
   bounds: ModelBounds;
   geometry: THREE.BufferGeometry;
@@ -101,7 +100,8 @@ export default function CopilotScene({ onCameraChange, children }: CopilotSceneP
 
   return (
     <>
-      <ambientLight intensity={0.15} />
+      <color attach="background" args={['#d6e7f1']} />
+      <ambientLight intensity={0.4} />
       <directionalLight position={[5, 8, 5]} intensity={0.8} castShadow color="#f5f0e8" />
       <directionalLight position={[-5, 5, -5]} intensity={0.35} color="#e8eef5" />
       <directionalLight position={[0, -3, 5]} intensity={0.25} />
@@ -129,7 +129,6 @@ export default function CopilotScene({ onCameraChange, children }: CopilotSceneP
               sheenColor={new THREE.Color(0xe8e8e0)}
             />
           </mesh>
-          {/* 3D overlays render inside the same group as the model */}
           <ModelContext.Provider value={modelCtx}>
             {children}
           </ModelContext.Provider>
@@ -150,7 +149,7 @@ export default function CopilotScene({ onCameraChange, children }: CopilotSceneP
         zoomSpeed={1.2}
         panSpeed={0.8}
         enableDamping={true}
-        dampingFactor={0.08}
+        dampingFactor={0.12}
         minDistance={0.5}
         maxDistance={10}
         minPolarAngle={0.1}

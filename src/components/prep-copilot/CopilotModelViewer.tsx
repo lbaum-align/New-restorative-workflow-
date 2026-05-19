@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useRef, useState } from 'react';
+import { Suspense, useCallback, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import * as THREE from 'three';
 import CopilotScene from './CopilotScene';

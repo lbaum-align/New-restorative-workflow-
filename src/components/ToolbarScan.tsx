@@ -82,7 +82,7 @@ export function ToolbarScan({
     } else {
       setSelectedTool(toolId);
       onAnyToolActiveChange?.(true);
-      onMonochromeChange?.(toolId === 0);
+      onMonochromeChange?.(toolId === 0 || toolId === 5);
       if (toolId === 2) {
         setIsPrepEditPanelOpen(true);
         onPrepEditChange?.(true);
@@ -97,11 +97,10 @@ export function ToolbarScan({
   };
 
   const isButtonActive = (toolId: number) => {
+    if (toolId === 0) return selectedTool === 0 || isUndoPanelOpen;
     if (toolId === 2) return isPrepEditPanelOpen;
     if (toolId === 4) return isCopilotActive;
-    if (toolId === 5) {
-      return isUndoPanelOpen;
-    }
+    if (toolId === 5) return isUndoPanelOpen;
     return selectedTool === toolId;
   };
 

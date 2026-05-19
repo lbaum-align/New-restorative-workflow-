@@ -1,50 +1,46 @@
-export interface AgentStep {
-  id: string;
-  agentName: string;
-  delay: number;       // ms before this step starts (after previous completes)
-  duration: number;    // ms this step runs (-1 = continuous)
-  message: string;
-  overlay: string | null;
-  scores: Partial<ScoreData> | null;
+export type ViewId = 'margin' | 'reduction' | 'insertion' | 'undercuts' | 'zones' | 'crown';
+
+export type MaterialType = 'bruxzir-esthetic' | 'bruxzir-full-strength';
+
+export type CopilotPhase = 'idle' | 'detecting' | 'detected' | 'zooming' | 'analyzing' | 'ready' | 'viewing';
+
+export type ZoneId = 'occlusal' | 'buccal' | 'lingual' | 'mesial' | 'distal';
+
+export type AnalysisStatus = 'pending' | 'running' | 'complete';
+
+export type FindingStatus = 'pass' | 'warning' | 'fail';
+
+export interface MaterialThresholds {
+  ideal: number;
+  min: number;
 }
 
-export interface ChatMessage {
-  id: string;
-  agentName: string;
-  text: string;
-  timestamp: number;
-  isTyping?: boolean;
+export interface ZoneReduction {
+  zone: ZoneId;
+  measured: number;
+  target: number;
+  status: FindingStatus;
 }
 
-export interface ScoreData {
-  prepStrength: number | null;
-  undercutScore: number | null;
-  undercutCount: number | null;
-  undercutMax: number | null;
-  viewAngle: string;
-  rxMaterial: string;
-  reductionMin: number | null;
-  reductionMax: number | null;
-  reductionAvg: number | null;
-  insertionAngle: number | null;
+export interface ViewFinding {
+  title: string;
+  area?: string;
+  measurement?: string;
+  target?: string;
+  status: FindingStatus;
+  statusLabel: string;
+  recommendation: string;
 }
 
-export interface CommandChip {
-  id: string;
-  label: string;
-  active: boolean;
-  isNew?: boolean;
-}
-
-export interface CopilotState {
-  isActive: boolean;
-  currentStep: string | null;
-  messages: ChatMessage[];
-  scores: ScoreData;
-  activeOverlays: Set<string>;
-  commandChips: CommandChip[];
-  isSequenceComplete: boolean;
-  isRescanning: boolean;
+export interface PrepCopilotState {
+  phase: CopilotPhase;
+  activeView: ViewId | null;
+  analysisProgress: Record<ViewId, AnalysisStatus>;
+  overallProgress: number;
+  selectedMaterial: MaterialType;
+  selectedZone: ZoneId | null;
+  findings: Record<ViewId, ViewFinding>;
+  zoneReductions: ZoneReduction[];
 }
 
 export type ViewAngleLabel =
@@ -54,3 +50,9 @@ export type ViewAngleLabel =
   | 'Mesial'
   | 'Distal'
   | 'Interproximal';
+
+export interface CameraPreset {
+  theta: number;
+  phi: number;
+  radius: number;
+}

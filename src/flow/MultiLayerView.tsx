@@ -273,7 +273,7 @@ export default function MultiLayerView({ patient, onBack, onHome, onNavigateToMu
               alpha: true,
               preserveDrawingBuffer: true,
               toneMapping: THREE.ACESFilmicToneMapping,
-              toneMappingExposure: 0.7,
+              toneMappingExposure: 1.0,
             }}
             style={{ touchAction: 'none', background: 'transparent' }}
             dpr={[1, 2]}

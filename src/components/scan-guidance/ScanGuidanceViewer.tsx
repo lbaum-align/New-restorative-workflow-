@@ -8,7 +8,6 @@ import * as THREE from 'three';
 import upperJawModel from '@/assets/3d-models/Upper Jaw .ply?url';
 import lowerJawModel from '@/assets/3d-models/Lower Jaw.ply?url';
 import biteModel from '@/assets/3d-models/Bite.ply?url';
-import hdrUrl from '@/assets/lebombo_1k.hdr?url';
 import { loadiTeroPLY } from './iTeroPLYLoader';
 import RevealMaterial from './RevealMaterial';
 import { useScanProgress } from './useScanProgress';
@@ -239,38 +238,53 @@ function Scene({ onGuidanceUpdate, onReset, guidanceMode, lockModel, isScanningR
         const sp = scanPlaneRef.current;
         if (!sp) return;
 
-        // Scan exactly where the mouse is pointing — raycast directly against mesh
+        // The silhouette is nearly centered — tiny pointer bias
+        const silCenterX = pointer.x * 0.02;
+        const silCenterY = pointer.y * 0.02;
+
+        // NDC extents of the silhouette rectangle on screen
+        const ndcHalfW = 0.12;
+        const ndcHalfH = 0.20;
         const sampleNDC = new THREE.Vector2();
 
-        // Primary raycast at mouse position — paint where it hits the actual model
-        raycaster.current.setFromCamera(pointer, camera);
-        const directHits = raycaster.current.intersectObject(mesh, false);
-        if (directHits.length > 0) {
-          const localPt = mesh.worldToLocal(directHits[0].point.clone());
-          const brushX = rangeX * 0.06;
-          const brushZ = rangeZ * 0.06;
-          captureRect(
-            localPt.x - brushX, localPt.x + brushX,
-            localPt.z - brushZ, localPt.z + brushZ,
-            bounds,
-          );
+        // Sample a grid across the silhouette — raycast against the scan box
+        // then convert hit point to mesh-local space for painting
+        const SAMPLES = 4;
+        for (let si = 0; si < SAMPLES; si++) {
+          for (let sj = 0; sj < SAMPLES; sj++) {
+            const u = (si / (SAMPLES - 1)) * 2 - 1;
+            const v = (sj / (SAMPLES - 1)) * 2 - 1;
+            sampleNDC.set(silCenterX + u * ndcHalfW, silCenterY + v * ndcHalfH);
+
+            raycaster.current.setFromCamera(sampleNDC, camera);
+            const hits = raycaster.current.intersectObject(sp, false);
+            if (hits.length > 0) {
+              const localPt = mesh.worldToLocal(hits[0].point.clone());
+              const brushX = rangeX * 0.14;
+              const brushZ = rangeZ * 0.14;
+              captureRect(
+                localPt.x - brushX, localPt.x + brushX,
+                localPt.z - brushZ, localPt.z + brushZ,
+                bounds,
+              );
+            }
+          }
         }
 
-        // Small cluster of samples around mouse for smooth fill (tight radius)
-        const ndcSpread = 0.04;
-        for (let r = 0; r < 6; r++) {
+        // Random samples for smooth organic fill
+        for (let r = 0; r < 8; r++) {
           const angle = Math.random() * Math.PI * 2;
-          const dist = Math.random() * ndcSpread;
+          const dist = Math.random();
           sampleNDC.set(
-            pointer.x + Math.cos(angle) * dist,
-            pointer.y + Math.sin(angle) * dist,
+            silCenterX + Math.cos(angle) * ndcHalfW * dist,
+            silCenterY + Math.sin(angle) * ndcHalfH * dist,
           );
           raycaster.current.setFromCamera(sampleNDC, camera);
-          const hits = raycaster.current.intersectObject(mesh, false);
+          const hits = raycaster.current.intersectObject(sp, false);
           if (hits.length > 0) {
             const localPt = mesh.worldToLocal(hits[0].point.clone());
-            const brushX = rangeX * 0.05;
-            const brushZ = rangeZ * 0.05;
+            const brushX = rangeX * 0.10;
+            const brushZ = rangeZ * 0.10;
             captureRect(
               localPt.x - brushX, localPt.x + brushX,
               localPt.z - brushZ, localPt.z + brushZ,
@@ -280,8 +294,9 @@ function Scene({ onGuidanceUpdate, onReset, guidanceMode, lockModel, isScanningR
         }
 
         // Determine active region from center hit
-        raycaster.current.setFromCamera(pointer, camera);
-        const centerHits = raycaster.current.intersectObject(mesh, false);
+        sampleNDC.set(silCenterX, silCenterY);
+        raycaster.current.setFromCamera(sampleNDC, camera);
+        const centerHits = raycaster.current.intersectObject(sp, false);
         if (centerHits.length > 0) {
           const lp = mesh.worldToLocal(centerHits[0].point.clone());
           const rnx = (lp.x - bounds.minX) / rangeX;
@@ -348,18 +363,19 @@ function Scene({ onGuidanceUpdate, onReset, guidanceMode, lockModel, isScanningR
       <directionalLight position={[0, 5, -5]}   intensity={0.2}  />
       <pointLight       position={[0, 10, 0]}   intensity={0.2}  color="#fff5e6" />
       <pointLight       position={[3, 0, 3]}    intensity={0.15} color="#e6f0ff" />
-      <Environment files={hdrUrl} background={false} />
+      <Environment preset="apartment" background={false} />
 
       <Center>
         <group ref={groupRef}>
           <mesh ref={meshRef} geometry={enhancedGeo} scale={0.055}>
             <RevealMaterial coverageTexture={coverageTexture} bounds={bounds} />
           </mesh>
-          {/* Invisible scan sphere — catches raycasts reliably from any angle */}
+          {/* Invisible scan box — catches raycasts reliably from any angle */}
           <mesh ref={scanPlaneRef} scale={0.055} renderOrder={-1}>
-            <sphereGeometry args={[
-              Math.max(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ) * 2.0,
-              32, 32,
+            <boxGeometry args={[
+              (bounds.maxX - bounds.minX) * 2.5,
+              (bounds.maxZ - bounds.minZ) * 2.5,
+              (bounds.maxZ - bounds.minZ) * 2.5,
             ]} />
             <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
           </mesh>

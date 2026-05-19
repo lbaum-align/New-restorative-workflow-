@@ -4,11 +4,17 @@ import type { MaterialType, MaterialThresholds, ViewId, ViewFinding, ZoneReducti
 export const MATERIAL_THRESHOLDS: Record<MaterialType, MaterialThresholds> = {
   'bruxzir-esthetic': { ideal: 1.25, min: 0.7 },
   'bruxzir-full-strength': { ideal: 1.0, min: 0.5 },
+  'emax': { ideal: 1.5, min: 1.0 },
+  'lithium-disilicate': { ideal: 1.3, min: 0.8 },
+  'pfm': { ideal: 1.2, min: 0.8 },
 };
 
 export const MATERIAL_LABELS: Record<MaterialType, string> = {
   'bruxzir-esthetic': 'BruxZir Esthetic',
   'bruxzir-full-strength': 'BruxZir Full-Strength',
+  'emax': 'IPS e.max',
+  'lithium-disilicate': 'Lithium Disilicate',
+  'pfm': 'PFM',
 };
 
 // ─── Camera Presets ─────────────────────────────────────────────────────────

@@ -1,6 +1,11 @@
 export type ViewId = 'margin' | 'reduction' | 'insertion' | 'undercuts' | 'zones' | 'crown';
 
-export type MaterialType = 'bruxzir-esthetic' | 'bruxzir-full-strength';
+export type MaterialType =
+  | 'bruxzir-esthetic'
+  | 'bruxzir-full-strength'
+  | 'emax'
+  | 'lithium-disilicate'
+  | 'pfm';
 
 export type CopilotPhase = 'idle' | 'detecting' | 'detected' | 'zooming' | 'analyzing' | 'ready' | 'viewing';
 

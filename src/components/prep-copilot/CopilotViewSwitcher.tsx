@@ -5,7 +5,6 @@ const VIEWS: { id: ViewId; label: string }[] = [
   { id: 'reduction', label: 'Reduction' },
   { id: 'insertion', label: 'Path' },
   { id: 'undercuts', label: 'Undercuts' },
-  { id: 'zones', label: 'Areas' },
   { id: 'crown', label: 'Crown' },
 ];
 
@@ -17,8 +16,8 @@ interface CopilotViewSwitcherProps {
 
 export default function CopilotViewSwitcher({ activeView, analysisProgress, onViewChange }: CopilotViewSwitcherProps) {
   return (
-    <div className="px-3 py-2 shrink-0">
-      <div className="flex gap-1 rounded-lg bg-[#f1f5f9] p-1">
+    <div className="px-3.5 py-2.5 shrink-0">
+      <div className="flex gap-1 rounded-lg bg-[#f1f5f9] p-1.5 border border-[#e2e8f0]">
         {VIEWS.map(({ id, label }) => {
           const status = analysisProgress[id];
           const isActive = activeView === id;
@@ -30,12 +29,12 @@ export default function CopilotViewSwitcher({ activeView, analysisProgress, onVi
               key={id}
               onClick={() => isAvailable && onViewChange(id)}
               disabled={!isAvailable}
-              className="relative flex-1 py-2 px-1.5 rounded-md text-[12px] font-medium transition-all duration-200"
+              className="relative flex-1 py-2.5 px-1.5 rounded-md text-[13px] font-semibold transition-all duration-200"
               style={{
                 background: isActive ? '#009ACE' : 'transparent',
                 color: isActive ? '#fff' : isAvailable ? '#374151' : '#94a3b8',
                 cursor: isAvailable ? 'pointer' : 'default',
-                opacity: !isAvailable && !isRunning ? 0.5 : 1,
+                opacity: !isAvailable && !isRunning ? 0.55 : 1,
               }}
             >
               {label}

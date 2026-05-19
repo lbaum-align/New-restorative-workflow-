@@ -36,7 +36,7 @@ export default function PrepCopilotPanel({
       animate={{ x: 0 }}
       exit={{ x: PANEL_WIDTH }}
       transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-      className="absolute z-[45] flex flex-col bg-white shadow-[-4px_0_16px_rgba(0,0,0,0.1)] rounded-[8px] overflow-hidden"
+      className="absolute z-[45] flex flex-col bg-white shadow-[-8px_0_24px_rgba(15,23,42,0.12)] rounded-[12px] overflow-hidden border border-[#e2e8f0]"
       style={{
         width: PANEL_WIDTH,
         right: 16,
@@ -63,6 +63,7 @@ export default function PrepCopilotPanel({
         finding={currentFinding}
         zoneReductions={zoneReductions}
         selectedZone={selectedZone}
+        selectedMaterial={selectedMaterial}
         onZoneSelect={onZoneSelect}
       />
 

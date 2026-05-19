@@ -1,18 +1,13 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import CopilotModelViewer from './CopilotModelViewer';
 import PrepCopilotPanel from './PrepCopilotPanel';
 import { usePrepCopilotStateMachine } from './usePrepCopilotStateMachine';
-import { MATERIAL_THRESHOLDS } from './constants';
 import type { ViewId, ZoneId } from './types';
 
-import MarginLineOverlay from './overlays/MarginLineOverlay';
-import CrownOverlay from './overlays/CrownOverlay';
-import InsertionPathArrow from './overlays/InsertionPathArrow';
-import UndercutHighlights from './overlays/UndercutHighlights';
 import PrepPulseOverlay from './overlays/PrepPulseOverlay';
 import ZoneOverlay from './overlays/ZoneOverlay';
 import CopilotProgressStrip from './CopilotProgressStrip';
-import ZoneHighlight from './overlays/ZoneHighlight';
+import PrepGeometry from './PrepGeometry';
 
 interface PrepCopilotExperienceProps {
   onClose: () => void;
@@ -21,6 +16,11 @@ interface PrepCopilotExperienceProps {
 
 export default function PrepCopilotExperience({ onClose, toolbarCollapsed = true }: PrepCopilotExperienceProps) {
   const { state, setActiveView, setSelectedMaterial, setSelectedZone, statusText } = usePrepCopilotStateMachine(true);
+  const [isPrepMoveMode, setIsPrepMoveMode] = useState(false);
+  // Values based on your provided screenshot
+  const [prepPosition, setPrepPosition] = useState<[number, number, number]>([1.1, 0.1, 0.75]);
+  const [prepRotation, setPrepRotation] = useState<[number, number, number]>([1.6, 0.8, 0.35]);
+  const [prepScale, setPrepScale] = useState(4);
 
   const handleViewChange = useCallback((view: ViewId) => {
     setActiveView(view);
@@ -31,95 +31,107 @@ export default function PrepCopilotExperience({ onClose, toolbarCollapsed = true
   }, [setSelectedZone]);
 
   const { activeView, selectedMaterial, selectedZone, phase } = state;
-  const thresholds = MATERIAL_THRESHOLDS[selectedMaterial];
   const showPulse = phase === 'detecting' || phase === 'detected';
+  const reductionZone = activeView === 'reduction'
+    ? (selectedZone ?? 'occlusal')
+    : selectedZone;
+  const showReductionAnalysis = activeView === 'reduction';
+  const moveStep = 0.01;
+  const rotateStep = 0.05;
+  const scaleStep = 0.05;
+
+  const nudgePrep = useCallback((dx: number, dy: number, dz: number) => {
+    setPrepPosition(([x, y, z]) => [x + dx, y + dy, z + dz]);
+  }, []);
+  const nudgeRotation = useCallback((drx: number, dry: number, drz: number) => {
+    setPrepRotation(([rx, ry, rz]) => [rx + drx, ry + dry, rz + drz]);
+  }, []);
+  const nudgeScale = useCallback((delta: number) => {
+    setPrepScale(prev => Math.min(4, Math.max(0.3, prev + delta)));
+  }, []);
 
   return (
     <div className="absolute inset-0 z-[15]">
+      <div className="absolute left-4 top-4 z-[60] flex flex-col gap-2 rounded-lg bg-white/95 p-3 shadow-md">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs font-semibold text-slate-700">Prep Move Mode</span>
+          <button
+            type="button"
+            onClick={() => setIsPrepMoveMode(v => !v)}
+            className={`rounded px-2 py-1 text-xs font-medium ${
+              isPrepMoveMode ? 'bg-[#009ACE] text-white' : 'bg-slate-200 text-slate-700'
+            }`}
+          >
+            {isPrepMoveMode ? 'ON' : 'OFF'}
+          </button>
+        </div>
+
+        {isPrepMoveMode && (
+          <>
+            <div className="text-[11px] text-slate-600">
+              {`XYZ: (${prepPosition[0].toFixed(3)}, ${prepPosition[1].toFixed(3)}, ${prepPosition[2].toFixed(3)})`}
+            </div>
+            <div className="text-[11px] text-slate-600">
+              {`ROT: (${prepRotation[0].toFixed(2)}, ${prepRotation[1].toFixed(2)}, ${prepRotation[2].toFixed(2)})`}
+            </div>
+            <div className="text-[11px] text-slate-600">
+              {`SCALE: ${prepScale.toFixed(2)}`}
+            </div>
+            <div className="grid grid-cols-3 gap-1">
+              <button type="button" className="rounded bg-slate-100 px-2 py-1 text-xs" onClick={() => nudgePrep(-moveStep, 0, 0)}>X-</button>
+              <button type="button" className="rounded bg-slate-100 px-2 py-1 text-xs" onClick={() => nudgePrep(0, moveStep, 0)}>Y+</button>
+              <button type="button" className="rounded bg-slate-100 px-2 py-1 text-xs" onClick={() => nudgePrep(moveStep, 0, 0)}>X+</button>
+              <button type="button" className="rounded bg-slate-100 px-2 py-1 text-xs" onClick={() => nudgePrep(0, 0, -moveStep)}>Z-</button>
+              <button
+                type="button"
+                className="rounded bg-slate-100 px-2 py-1 text-xs"
+                onClick={() => {
+                  setPrepPosition([1.1, 0.1, 0.75]);
+                  setPrepRotation([1.6, 0.8, 0.35]);
+                  setPrepScale(4);
+                }}
+              >
+                Reset
+              </button>
+              <button type="button" className="rounded bg-slate-100 px-2 py-1 text-xs" onClick={() => nudgePrep(0, 0, moveStep)}>Z+</button>
+              <button type="button" className="col-span-3 rounded bg-slate-100 px-2 py-1 text-xs" onClick={() => nudgePrep(0, -moveStep, 0)}>Y-</button>
+            </div>
+            <div className="grid grid-cols-3 gap-1">
+              <button type="button" className="rounded bg-slate-100 px-2 py-1 text-xs" onClick={() => nudgeRotation(-rotateStep, 0, 0)}>Rx-</button>
+              <button type="button" className="rounded bg-slate-100 px-2 py-1 text-xs" onClick={() => nudgeRotation(0, rotateStep, 0)}>Ry+</button>
+              <button type="button" className="rounded bg-slate-100 px-2 py-1 text-xs" onClick={() => nudgeRotation(rotateStep, 0, 0)}>Rx+</button>
+              <button type="button" className="rounded bg-slate-100 px-2 py-1 text-xs" onClick={() => nudgeRotation(0, 0, -rotateStep)}>Rz-</button>
+              <button type="button" className="rounded bg-slate-100 px-2 py-1 text-xs" onClick={() => nudgeRotation(0, -rotateStep, 0)}>Ry-</button>
+              <button type="button" className="rounded bg-slate-100 px-2 py-1 text-xs" onClick={() => nudgeRotation(0, 0, rotateStep)}>Rz+</button>
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              <button type="button" className="rounded bg-slate-100 px-2 py-1 text-xs" onClick={() => nudgeScale(-scaleStep)}>Smaller</button>
+              <button type="button" className="rounded bg-slate-100 px-2 py-1 text-xs" onClick={() => nudgeScale(scaleStep)}>Bigger</button>
+            </div>
+          </>
+        )}
+      </div>
+
       <div className="absolute inset-0" style={{ pointerEvents: 'auto' }}>
         <CopilotModelViewer>
-          {/* Zone-specific reduction analysis on molar */}
-          {(phase === 'analyzing' || phase === 'complete') && (
-            <group>
-              {/* Occlusal surface (top of tooth) */}
-              {(selectedZone === 'occlusal' || selectedZone === null) && (
-                <>
-                  <mesh position={[0.4, -0.05, -0.15]}>
-                    <sphereGeometry args={[0.04]} />
-                    <meshBasicMaterial color="#ff3333" transparent opacity={0.9} />
-                  </mesh>
-                  <mesh position={[0.42, -0.06, -0.12]}>
-                    <sphereGeometry args={[0.03]} />
-                    <meshBasicMaterial color="#ff9933" transparent opacity={0.8} />
-                  </mesh>
-                </>
-              )}
-              
-              {/* Buccal surface (cheek side) */}
-              {selectedZone === 'buccal' && (
-                <>
-                  <mesh position={[0.32, -0.08, -0.15]}>
-                    <sphereGeometry args={[0.035]} />
-                    <meshBasicMaterial color="#33ff33" transparent opacity={0.9} />
-                  </mesh>
-                  <mesh position={[0.3, -0.1, -0.18]}>
-                    <sphereGeometry args={[0.025]} />
-                    <meshBasicMaterial color="#ff9933" transparent opacity={0.8} />
-                  </mesh>
-                </>
-              )}
-              
-              {/* Lingual surface (tongue side) */}
-              {selectedZone === 'lingual' && (
-                <>
-                  <mesh position={[0.48, -0.08, -0.15]}>
-                    <sphereGeometry args={[0.035]} />
-                    <meshBasicMaterial color="#ff9933" transparent opacity={0.9} />
-                  </mesh>
-                  <mesh position={[0.5, -0.1, -0.12]}>
-                    <sphereGeometry args={[0.025]} />
-                    <meshBasicMaterial color="#33ff33" transparent opacity={0.8} />
-                  </mesh>
-                </>
-              )}
-              
-              {/* Mesial surface (front of tooth) */}
-              {selectedZone === 'mesial' && (
-                <>
-                  <mesh position={[0.4, -0.08, -0.08]}>
-                    <sphereGeometry args={[0.03]} />
-                    <meshBasicMaterial color="#33ff33" transparent opacity={0.9} />
-                  </mesh>
-                  <mesh position={[0.38, -0.1, -0.05]}>
-                    <sphereGeometry args={[0.02]} />
-                    <meshBasicMaterial color="#ff9933" transparent opacity={0.8} />
-                  </mesh>
-                </>
-              )}
-              
-              {/* Distal surface (back of tooth) */}
-              {selectedZone === 'distal' && (
-                <>
-                  <mesh position={[0.4, -0.08, -0.22]}>
-                    <sphereGeometry args={[0.03]} />
-                    <meshBasicMaterial color="#ff9933" transparent opacity={0.9} />
-                  </mesh>
-                  <mesh position={[0.42, -0.1, -0.25]}>
-                    <sphereGeometry args={[0.02]} />
-                    <meshBasicMaterial color="#33ff33" transparent opacity={0.8} />
-                  </mesh>
-                </>
-              )}
-            </group>
-          )}
+          {/* Realistic 3D Preparation Geometry */}
+          <PrepGeometry 
+            visible={true}
+            selectedZone={reductionZone}
+            selectedMaterial={selectedMaterial}
+            showMarginLine={activeView === 'margin'}
+            showReductionAnalysis={showReductionAnalysis}
+            showInsertionPath={activeView === 'insertion'}
+            showUndercuts={activeView === 'undercuts'}
+            showCrown={activeView === 'crown'}
+            prepPosition={prepPosition}
+            prepRotation={prepRotation}
+            prepScale={prepScale}
+            showCoordinates={isPrepMoveMode}
+          />
           
           <PrepPulseOverlay visible={showPulse} />
-          <MarginLineOverlay visible={activeView === 'margin'} />
-          <InsertionPathArrow visible={activeView === 'insertion'} />
-          <UndercutHighlights visible={activeView === 'undercuts'} />
-          <ZoneOverlay visible={activeView === 'zones'} selectedZone={selectedZone} onZoneClick={handleZoneSelect} />
-          <ZoneHighlight visible={activeView === 'zones'} selectedZone={selectedZone} />
-          <CrownOverlay visible={activeView === 'crown'} />
+          <ZoneOverlay visible={activeView === 'reduction'} selectedZone={selectedZone} onZoneClick={handleZoneSelect} />
         </CopilotModelViewer>
 
         <CopilotProgressStrip

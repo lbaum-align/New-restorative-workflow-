@@ -50,6 +50,7 @@ function RailGuide({ variant }: { variant: string }) {
   if (variant === 'rock3d')  return <CircularRails />;
   if (variant === 'tumble3d') return <TiltRails />;
   if (variant === 'wobble3d') return <WobbleRails />;
+  if (variant === 'tiltnod3d') return <><TiltRails /><PitchRails /></>;
   return <HorizontalRails />;
 }
 

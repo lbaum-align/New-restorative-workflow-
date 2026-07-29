@@ -103,7 +103,7 @@ export default function ReviewToolPanel({
   onZoomImage
 }: ReviewToolPanelProps) {
   return (
-    <div className="bg-[#f1f6fa] flex gap-[4px] items-stretch p-[8px] h-full w-full rounded-[8px]" data-name="Review-Container">
+    <div className="bg-[#f1f6fa] flex gap-[4px] items-stretch p-[8px] h-full w-full rounded-[8px] shadow-[0_8px_24px_rgba(0,0,0,0.18)]" data-name="Review-Container">
       <button
         onClick={onToggleExpand}
         className="flex items-center justify-center shrink-0 hover:opacity-70 transition-opacity cursor-pointer"

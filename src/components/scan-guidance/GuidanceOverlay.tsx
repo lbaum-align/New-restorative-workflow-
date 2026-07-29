@@ -6,7 +6,7 @@ import type {
 } from './types';
 
 const ShowArrowsContext = React.createContext(true);
-const GhostMainContext  = React.createContext({ ghostMain: false, syncMain: false, keyDir: 0 as -1 | 0 | 1 });
+const GhostMainContext  = React.createContext({ ghostMain: false, syncMain: false, hideMain: false, keyDir: 0 as -1 | 0 | 1 });
 
 interface GuidanceOverlayProps {
   guidance: GuidanceState;
@@ -25,6 +25,8 @@ interface GuidanceOverlayProps {
   ghostMain?: boolean;
   /** Make the main wand animate in sync with the ghost wand's motion */
   syncMain?: boolean;
+  /** Hide the main (white) wand silhouette entirely — arrows still render */
+  hideMain?: boolean;
   /** A/D key direction: -1 = A (left), 0 = idle, 1 = D (right) — moves the main wand along current axis */
   keyDir?: -1 | 0 | 1;
 }
@@ -1554,16 +1556,17 @@ const WAND_KF = `
 `;
 
 function WandSilhouette({ strokeColor, opacity, dashed, ghost }: { strokeColor: string; opacity: number; dashed?: boolean; ghost?: boolean }) {
-  const dash = dashed ? '10 6' : undefined;
-  const sw = ghost ? '3.5' : '2.72527';
-  const fillColor = ghost ? 'rgba(0,154,206,0.06)' : 'none';
+  // Ghost renders as a clean, unified continuous outline — no dashes/dots, no fill — with a thin, modern stroke.
+  const dash = (dashed && !ghost) ? '10 6' : undefined;
+  const sw = ghost ? '2.6' : '2.72527';
   return (
-    <svg width="100%" height="100%" viewBox="0 0 251 561" fill="none" preserveAspectRatio="xMidYMid meet" style={{ opacity, filter: ghost ? 'drop-shadow(0 0 8px rgba(0,154,206,0.4))' : undefined }}>
+    <svg width="100%" height="100%" viewBox="0 0 251 561" fill="none" preserveAspectRatio="xMidYMid meet" style={{ opacity, filter: ghost ? 'drop-shadow(0 0 5px rgba(0,154,206,0.3))' : undefined }}>
       <path
         d="M249.361 560.044L232.599 25.1221C232.185 11.8815 221.331 1.36279 208.084 1.36279H53.8173C40.7683 1.36279 30.0037 11.5798 29.3232 24.6111L1.36084 560.044"
-        stroke={strokeColor} strokeWidth={sw} strokeDasharray={dash} fill={fillColor}
+        stroke={strokeColor} strokeWidth={sw} strokeDasharray={dash} fill="none"
+        strokeLinejoin="round" strokeLinecap="round"
       />
-      <rect x="49.7235" y="30.7254" width="163.516" height="267.077" stroke={strokeColor} strokeWidth={sw} strokeDasharray={dash} fill={fillColor} rx="4" />
+      <rect x="49.7235" y="30.7254" width="163.516" height="267.077" stroke={strokeColor} strokeWidth={sw} strokeDasharray={dash} fill="none" rx="10" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
 }
@@ -1705,6 +1708,18 @@ const GWAND_KF = `
   @keyframes gwand-float-rock3d { 0%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 20px),-29.3%) rotate(-12deg)} 50%{transform-origin:52.4% 70%;transform:translate(calc(-50% - 20px),-29.3%) rotate(12deg)} 100%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 20px),-29.3%) rotate(-12deg)} }
   @keyframes gwand-float-tumble3d { 0%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 14px),-29.3%) perspective(300px) rotateX(-14deg) rotate(-10deg)} 25%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(14deg) rotate(0deg)} 50%{transform-origin:52.4% 70%;transform:translate(calc(-50% - 14px),-29.3%) perspective(300px) rotateX(-14deg) rotate(10deg)} 75%{transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(300px) rotateX(14deg) rotate(0deg)} 100%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 14px),-29.3%) perspective(300px) rotateX(-14deg) rotate(-10deg)} }
   @keyframes gwand-float-wobble3d { 0%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 10px),-29.3%) perspective(300px) rotateX(8deg) rotateY(-12deg)} 25%{transform-origin:52.4% 70%;transform:translate(calc(-50% - 10px),-29.3%) perspective(300px) rotateX(-6deg) rotateY(8deg)} 50%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 10px),-29.3%) perspective(300px) rotateX(8deg) rotateY(12deg)} 75%{transform-origin:52.4% 70%;transform:translate(calc(-50% - 10px),-29.3%) perspective(300px) rotateX(-6deg) rotateY(-8deg)} 100%{transform-origin:52.4% 70%;transform:translate(calc(-50% + 10px),-29.3%) perspective(300px) rotateX(8deg) rotateY(-12deg)} }
+  /* 3D Tilt + Nod — first tilts side-to-side (rotateY), pauses at center, then nods up/down (rotateX) */
+  @keyframes gwand-float-tiltnod3d {
+    0%   {transform-origin:52.4% 70%;transform:translate(calc(-50% + 25px),-29.3%) perspective(280px) rotateY(-35deg) rotateX(0deg)}
+    14%  {transform-origin:52.4% 70%;transform:translate(calc(-50% - 25px),-29.3%) perspective(280px) rotateY(35deg) rotateX(0deg)}
+    28%  {transform-origin:52.4% 70%;transform:translate(calc(-50% + 25px),-29.3%) perspective(280px) rotateY(-35deg) rotateX(0deg)}
+    38%  {transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(350px) rotateY(0deg) rotateX(0deg)}
+    44%  {transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(350px) rotateY(0deg) rotateX(0deg)}
+    62%  {transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(350px) rotateY(0deg) rotateX(-18deg)}
+    76%  {transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(350px) rotateY(0deg) rotateX(18deg)}
+    88%  {transform-origin:52.4% 70%;transform:translate(-50%,-29.3%) perspective(350px) rotateY(0deg) rotateX(0deg)}
+    100% {transform-origin:52.4% 70%;transform:translate(calc(-50% + 25px),-29.3%) perspective(280px) rotateY(-35deg) rotateX(0deg)}
+  }
 `;
 
 const GWAND_ANIM: Record<string, string> = {
@@ -1740,6 +1755,7 @@ const GWAND_ANIM: Record<string, string> = {
   'fagwand-rock3d': 'gwand-float-rock3d 2.8s ease-in-out infinite',
   'fagwand-tumble3d': 'gwand-float-tumble3d 4s ease-in-out infinite',
   'fagwand-wobble3d': 'gwand-float-wobble3d 3.5s ease-in-out infinite',
+  'fagwand-tiltnod3d': 'gwand-float-tiltnod3d 8s ease-in-out infinite',
   'rot-cw':  'gwand-float-roll 3s ease-in-out infinite',
   'rot-ccw': 'gwand-float-roll 3s ease-in-out infinite',
   'rot-tilt':'gwand-float-pitch 3s ease-in-out infinite',
@@ -1757,6 +1773,7 @@ const GWAND_LABELS: Record<string, string> = {
   'fagwand-tilt3d': '3D Tilt', 'fagwand-spin3d': '3D Spin',
   'fagwand-orbit3d': '3D Orbit', 'fagwand-nod3d': '3D Nod', 'fagwand-sweep3d': '3D Sweep',
   'fagwand-rock3d': '3D Rock', 'fagwand-tumble3d': '3D Tumble', 'fagwand-wobble3d': '3D Wobble',
+  'fagwand-tiltnod3d': '3D Tilt + Nod',
   'rot-cw': 'Rotate CW', 'rot-ccw': 'Rotate CCW', 'rot-tilt': 'Tilt',
 };
 
@@ -2019,6 +2036,12 @@ function keyDirStyle(mode: string, dir: -1 | 0 | 1): React.CSSProperties | null 
     const rx = dir === -1 ? 8 : -8;
     return { transformOrigin: ORIGIN, transform: `${BASE} perspective(250px) rotateY(${ry}deg) rotateX(${rx}deg)` };
   }
+  if (suffix === 'tiltnod3d') {
+    // A → tilt extreme (rotateY), D → nod extreme (rotateX)
+    return dir === -1
+      ? { transformOrigin: ORIGIN, transform: `${BASE} perspective(280px) rotateY(-35deg)` }
+      : { transformOrigin: ORIGIN, transform: `${BASE} perspective(350px) rotateX(18deg)` };
+  }
   if (suffix === 'orbit3d') {
     const ry = dir === -1 ? -90 : 90;
     return { transformOrigin: ORIGIN, transform: `${BASE} perspective(300px) rotateY(${ry}deg) rotateX(10deg)` };
@@ -2056,7 +2079,7 @@ function GhostWandOverlay({ mode, g, f, showArrows: showArrowsProp = true, ghost
   wandOffset?: { x: number; y: number };
   hideTopBar?: boolean;
 }) {
-  const { ghostMain, syncMain, keyDir } = useContext(GhostMainContext);
+  const { ghostMain, syncMain, hideMain, keyDir } = useContext(GhostMainContext);
   const globalShowArrows = useContext(ShowArrowsContext);
   const showArrows = showArrowsProp && globalShowArrows;
   const pct = Math.round(g.coveragePercent * 100);
@@ -2107,12 +2130,14 @@ function GhostWandOverlay({ mode, g, f, showArrows: showArrowsProp = true, ghost
           transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1), transform-origin 0s',
           ...(keyOverride ?? {}),
         }}>
-          <WandSilhouette
-            strokeColor={ghostMain ? 'rgba(0,154,206,0.5)' : wandColor}
-            opacity={1}
-            dashed={ghostMain}
-            ghost={ghostMain}
-          />
+          {!hideMain && (
+            <WandSilhouette
+              strokeColor={ghostMain ? 'rgba(0,154,206,0.5)' : wandColor}
+              opacity={1}
+              dashed={ghostMain}
+              ghost={ghostMain}
+            />
+          )}
 
           {/* 3D Arrows — rendered in a small transparent R3F Canvas that moves with the wand */}
           {showArrows && <WandArrowCanvas mode={mode as GuidanceMode} />}
@@ -2431,10 +2456,10 @@ function SmartNavOverlay({ guidance, containerSize, pointerNDC, wandOffset = { x
 
 // ─── Main dispatcher ───────────────────────────────────────────────────────────
 
-export default function GuidanceOverlay({ showArrows = true, ghostMain = false, syncMain = false, keyDir = 0, ...rest }: GuidanceOverlayProps) {
+export default function GuidanceOverlay({ showArrows = true, ghostMain = false, syncMain = false, hideMain = false, keyDir = 0, ...rest }: GuidanceOverlayProps) {
   return (
     <ShowArrowsContext.Provider value={showArrows}>
-      <GhostMainContext.Provider value={{ ghostMain, syncMain, keyDir }}>
+      <GhostMainContext.Provider value={{ ghostMain, syncMain, hideMain, keyDir }}>
         <GuidanceOverlayInner {...rest} />
       </GhostMainContext.Provider>
     </ShowArrowsContext.Provider>

@@ -97,7 +97,7 @@ export function ToolbarView({ onActiveToolChange, onMonochromeChange, isDentures
     <div className="flex flex-col gap-4 items-end">
       <motion.div
         ref={toolbarRef}
-        className="bg-white rounded-[8px] p-2 w-fit flex items-stretch"
+        className="bg-white rounded-[8px] p-2 w-fit flex items-stretch shadow-[0_6px_20px_rgba(0,0,0,0.15)]"
         layout
         transition={{
           layout: { 

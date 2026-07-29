@@ -36,6 +36,8 @@ interface SceneProps {
   /** Smoothed wand-silhouette offset (px from center) so the brush paints under it */
   wandOffsetRef?: React.RefObject<{ x: number; y: number }>;
   showArrows3D?: boolean;
+  /** Hide the 3D jaw model mesh (guidance overlay stays visible) */
+  hideModel?: boolean;
   jaw?: JawType;
 }
 
@@ -59,7 +61,7 @@ const JAW_MODEL_URL: Record<JawType, string> = {
 // Cache loaded geometries so we never reload the same file
 const geoCache: Record<string, THREE.BufferGeometry> = {};
 
-function Scene({ onGuidanceUpdate, onReset, guidanceMode, lockModel, isScanningRef, wandOffsetRef, showArrows3D = true, jaw = 'upper' }: SceneProps) {
+function Scene({ onGuidanceUpdate, onReset, guidanceMode, lockModel, isScanningRef, wandOffsetRef, showArrows3D = true, hideModel = false, jaw = 'upper' }: SceneProps) {
   const [loadedGeo, setLoadedGeo] = useState<THREE.BufferGeometry | null>(() => geoCache[jaw] || null);
 
   useEffect(() => {
@@ -335,7 +337,7 @@ function Scene({ onGuidanceUpdate, onReset, guidanceMode, lockModel, isScanningR
             face toward the camera. */}
         <group rotation={[0, 0, jaw === 'upper' ? Math.PI : 0]}>
           <group ref={groupRef}>
-            <mesh ref={meshRef} geometry={enhancedGeo} scale={0.055}>
+            <mesh ref={meshRef} geometry={enhancedGeo} scale={0.055} visible={!hideModel}>
               <RevealMaterial />
             </mesh>
             {/* Invisible scan box — catches raycasts reliably from any angle */}
@@ -378,13 +380,17 @@ interface ScanGuidanceViewerProps {
   showArrows?: boolean;
   ghostMain?: boolean;
   syncMain?: boolean;
+  /** Hide the main (white) wand silhouette — arrows still show */
+  hideMain?: boolean;
+  /** Hide the 3D jaw model mesh — guidance overlay stays visible */
+  hideModel?: boolean;
   /** When true, scanning only occurs while right mouse button is held */
   requireRightClick?: boolean;
   /** Which jaw model to render */
   jaw?: JawType;
 }
 
-export default function ScanGuidanceViewer({ resetTrigger, guidanceMode = 'classic', lockModel = false, hideTopBar = false, showArrows = true, ghostMain = false, syncMain = false, requireRightClick = false, jaw = 'upper' }: ScanGuidanceViewerProps) {
+export default function ScanGuidanceViewer({ resetTrigger, guidanceMode = 'classic', lockModel = false, hideTopBar = false, showArrows = true, ghostMain = false, syncMain = false, hideMain = false, hideModel = false, requireRightClick = false, jaw = 'upper' }: ScanGuidanceViewerProps) {
   const [guidance, setGuidance] = useState<GuidanceState>({
     phase: 'idle', direction: null, hint: '', coveragePercent: 0,
     activeRegion: null, regions: [],
@@ -555,6 +561,7 @@ export default function ScanGuidanceViewer({ resetTrigger, guidanceMode = 'class
           isScanningRef={isScanningRef}
           wandOffsetRef={smoothedRef}
           showArrows3D={showArrows}
+          hideModel={hideModel}
           jaw={jaw}
         />
       </Canvas>
@@ -571,6 +578,7 @@ export default function ScanGuidanceViewer({ resetTrigger, guidanceMode = 'class
         showArrows={showArrows}
         ghostMain={ghostMain}
         syncMain={syncMain}
+        hideMain={hideMain}
         keyDir={keyDir}
       />
     </div>

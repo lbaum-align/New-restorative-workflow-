@@ -118,6 +118,9 @@ export default function App() {
           break;
 
         case 'h':
+          // On the multi-layer scan page and in scan guidance, H toggles the floating panels (handled inside ScanPageMultiLayer) — don't hijack it for navigation.
+          if (currentView === 'scanGuidance') break;
+          if (currentView === 'flow' && flowStep === 'scanMultiLayer') break;
           goHome();
           break;
 

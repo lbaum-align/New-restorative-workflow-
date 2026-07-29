@@ -174,7 +174,7 @@ export function BiteUnderTabToast({ title, body, visible }: BiteUnderTabToastPro
   );
 }
 
-/** Hook: manages a self-dismissing bite navigation banner with title + body. Auto-dismisses after 5s. */
+/** Hook: manages a self-dismissing bite navigation banner with title + body. Auto-dismisses after 10s. */
 export function useBiteToast() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -188,7 +188,7 @@ export function useBiteToast() {
 
   useEffect(() => {
     if (!visible) return;
-    const id = setTimeout(() => setVisible(false), 5000);
+    const id = setTimeout(() => setVisible(false), 10000);
     return () => clearTimeout(id);
   }, [visible, title]);
 

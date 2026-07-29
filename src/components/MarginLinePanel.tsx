@@ -249,7 +249,7 @@ export default function MarginLinePanel({
   onUndo
 }: MarginLinePanelProps) {
   return (
-    <div className="content-stretch flex flex-col items-start relative w-full max-w-[300px]" data-name="Margin line">
+    <div className="content-stretch flex flex-col items-start relative w-full max-w-[300px] rounded-[4px] shadow-[0_8px_24px_rgba(0,0,0,0.18)]" data-name="Margin line">
       <Header onClose={onClose} />
       <ToothSelector 
         toothNumber={toothNumber} 

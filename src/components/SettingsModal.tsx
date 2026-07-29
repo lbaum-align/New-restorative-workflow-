@@ -16,7 +16,18 @@ interface ThemeConfig {
   label: string;
 }
 
-type ThemePickerVariant = 1 | 2 | 3 | 4 | 5 | 6;
+type ThemePickerVariant = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
+// Curated 4-swatch set for the reference-style picker (Variant 8).
+// The default uses a soft radial gradient (canvasBg accepts gradient strings).
+const REF_DEFAULT_BG =
+  "radial-gradient(circle at 50% 42%, #e6f0f8 0%, #d6e4f0 55%, #c6d8e9 100%)";
+const REF_THEMES: ThemeConfig[] = [
+  { color: REF_DEFAULT_BG, label: "Default" },
+  { color: "#FAFAFA", label: "Light" },
+  { color: "#71717A", label: "Medium" },
+  { color: "#3F3F46", label: "Dark" },
+];
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const BG_THEMES: ThemeConfig[] = [
@@ -661,6 +672,100 @@ function VariantLivePreview({ canvasBg, onCanvasBgChange }: ThemePickerProps) {
   );
 }
 
+// Variant 8 — Reference layout: browser-window live preview + large swatch row
+function VariantReferenceCard({ canvasBg, onCanvasBgChange }: ThemePickerProps) {
+  const ui = (a: number) => uiAlpha(canvasBg, a);
+
+  return (
+    <div className="flex flex-col items-center gap-[28px] w-full">
+      {/* Section heading */}
+      <div className="flex flex-col items-center gap-[4px] self-start">
+        <p
+          className="font-['Roboto',sans-serif] font-normal text-[17px] text-[#3e3d40] leading-[24px]"
+          style={{ fontVariationSettings: "'wdth' 100" }}
+        >
+          Select the background color shown when reviewing scans
+        </p>
+        <p
+          className="font-['Roboto',sans-serif] font-medium text-[13px] text-[#3e3d40] leading-[18px] self-start"
+          style={{ fontVariationSettings: "'wdth' 100" }}
+        >
+          This will apply only to your review screen
+        </p>
+      </div>
+
+      {/* Browser-window live preview */}
+      <div
+        className="rounded-[6px] overflow-hidden bg-white shadow-[0_10px_30px_rgba(0,0,0,0.12)] flex flex-col"
+        style={{ width: "80%", aspectRatio: "16/10" }}
+      >
+        {/* Window chrome */}
+        <div className="bg-white flex items-center justify-between shrink-0 px-[14px]" style={{ height: 26 }}>
+          <div className="flex items-center gap-[6px]">
+            <div className="rounded-full" style={{ width: 6, height: 6, background: "#d4d4d8" }} />
+            <div className="rounded-[3px]" style={{ width: 30, height: 4, background: "#e4e4e7" }} />
+          </div>
+          <div className="flex items-center gap-[5px]">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="rounded-[3px]" style={{ width: 12, height: 12, background: i === 2 ? "#c1c1c6" : "#e4e4e7" }} />
+            ))}
+          </div>
+          <div className="flex items-center gap-[5px]">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="rounded-full" style={{ width: 6, height: 6, background: "#d4d4d8" }} />
+            ))}
+          </div>
+        </div>
+
+        {/* Canvas with current background */}
+        <div className="flex-1 min-h-0 relative m-[10px] mt-0 rounded-[4px] overflow-hidden" style={{ background: canvasBg }}>
+          {/* Top-left mini card */}
+          <div className="absolute top-[10px] left-[10px] rounded-[3px] bg-white shadow-sm p-[7px] flex flex-col gap-[5px]" style={{ width: 74 }}>
+            <div className="flex gap-[3px]">
+              <div className="rounded-full" style={{ width: 4, height: 4, background: "#d4d4d8" }} />
+              <div className="rounded-full" style={{ width: 4, height: 4, background: "#d4d4d8" }} />
+            </div>
+            <div className="rounded-[2px]" style={{ width: "100%", height: 4, background: "#e8e8ea" }} />
+            <div className="rounded-[2px]" style={{ width: "60%", height: 4, background: "#e8e8ea" }} />
+          </div>
+
+          {/* Top-right pill */}
+          <div className="absolute top-[10px] right-[10px] rounded-[3px] bg-white shadow-sm" style={{ width: 120, height: 16 }} />
+
+          {/* Teeth model centered */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <img
+              src={teethModelImg}
+              alt=""
+              style={{ maxWidth: "36%", maxHeight: "60%", objectFit: "contain", filter: "drop-shadow(0 6px 14px rgba(0,0,0,0.18))" }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Large swatch row */}
+      <div className="flex items-center justify-center gap-[22px]">
+        {REF_THEMES.map((theme) => {
+          const isSelected = canvasBg === theme.color;
+          return (
+            <button
+              key={theme.label}
+              onClick={() => onCanvasBgChange?.(theme.color)}
+              aria-label={`Select ${theme.label}`}
+              className={`rounded-[6px] transition-all cursor-pointer ${
+                isSelected
+                  ? "border-[2px] border-[#3b82c4] shadow-[0_0_0_3px_rgba(59,130,196,0.15)]"
+                  : "border-[1px] border-[#e4e4e7] hover:border-[#cfcfd4] shadow-[0_2px_6px_rgba(0,0,0,0.06)]"
+              }`}
+              style={{ width: 100, height: 66, background: theme.color }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Pages ────────────────────────────────────────────────────────────────────
 
 function MainPage({
@@ -715,7 +820,7 @@ function MainPage({
 }
 
 function ScreenAppearancePage({ canvasBg, onCanvasBgChange }: ThemePickerProps) {
-  const variant = useVariantKey(6);
+  const variant = useVariantKey(8);
 
   const VARIANTS: Record<number, React.ReactNode> = {
     1: <VariantCards canvasBg={canvasBg} onCanvasBgChange={onCanvasBgChange} />,
@@ -724,24 +829,28 @@ function ScreenAppearancePage({ canvasBg, onCanvasBgChange }: ThemePickerProps) 
     4: <VariantSwatches canvasBg={canvasBg} onCanvasBgChange={onCanvasBgChange} />,
     5: <VariantCards3Col canvasBg={canvasBg} onCanvasBgChange={onCanvasBgChange} />,
     6: <VariantLivePreview canvasBg={canvasBg} onCanvasBgChange={onCanvasBgChange} />,
+    8: <VariantReferenceCard canvasBg={canvasBg} onCanvasBgChange={onCanvasBgChange} />,
   };
 
+  // Variant 8 renders its own heading; others share the generic intro line.
   return (
     <div className="flex flex-col gap-[24px] w-full">
-      <p
-        className="font-['Roboto',sans-serif] font-medium text-[18px] text-[#3e3d40] leading-[24px]"
-        style={{ fontVariationSettings: "'wdth' 100" }}
-      >
-        Choose a canvas background to suit your workspace.
-      </p>
-      {VARIANTS[variant]}
+      {variant !== 8 && (
+        <p
+          className="font-['Roboto',sans-serif] font-medium text-[18px] text-[#3e3d40] leading-[24px]"
+          style={{ fontVariationSettings: "'wdth' 100" }}
+        >
+          Choose a canvas background to suit your workspace.
+        </p>
+      )}
+      {VARIANTS[variant] ?? VARIANTS[1]}
     </div>
   );
 }
 
 function BrightnessPage({ canvasBg, onCanvasBgChange }: ThemePickerProps) {
   const [brightness, setBrightness] = useState(75);
-  const variant = useVariantKey(6);
+  const variant = useVariantKey(8);
 
   const VARIANTS: Record<number, React.ReactNode> = {
     1: <VariantCards canvasBg={canvasBg} onCanvasBgChange={onCanvasBgChange} />,
@@ -750,6 +859,7 @@ function BrightnessPage({ canvasBg, onCanvasBgChange }: ThemePickerProps) {
     4: <VariantSwatches canvasBg={canvasBg} onCanvasBgChange={onCanvasBgChange} />,
     5: <VariantCards3Col canvasBg={canvasBg} onCanvasBgChange={onCanvasBgChange} />,
     6: <VariantLivePreview canvasBg={canvasBg} onCanvasBgChange={onCanvasBgChange} />,
+    8: <VariantReferenceCard canvasBg={canvasBg} onCanvasBgChange={onCanvasBgChange} />,
   };
 
   return (
@@ -777,7 +887,7 @@ function BrightnessPage({ canvasBg, onCanvasBgChange }: ThemePickerProps) {
         <p className="font-['Roboto',sans-serif] font-medium text-[18px] text-[#3e3d40] leading-[24px]" style={{ fontVariationSettings: "'wdth' 100" }}>
           Choose a canvas background to suit your workspace.
         </p>
-        {VARIANTS[variant]}
+        {VARIANTS[variant] ?? VARIANTS[1]}
       </div>
     </div>
   );

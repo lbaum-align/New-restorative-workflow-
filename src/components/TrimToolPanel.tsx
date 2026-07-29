@@ -126,7 +126,7 @@ function Body({ onTrim, onUndo }: { onTrim?: () => void; onUndo?: () => void }) 
 
 export default function TrimToolPanel({ onClose, onTrim, onUndo }: TrimToolPanelProps) {
   return (
-    <div className="content-stretch flex flex-col items-start relative w-[300px]" data-name="Trim tool">
+    <div className="content-stretch flex flex-col items-start relative w-[300px] rounded-[4px] shadow-[0_8px_24px_rgba(0,0,0,0.18)]" data-name="Trim tool">
       <Header onClose={onClose} />
       <Body onTrim={onTrim} onUndo={onUndo} />
     </div>

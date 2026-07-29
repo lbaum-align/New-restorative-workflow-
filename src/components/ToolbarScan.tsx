@@ -132,7 +132,7 @@ export function ToolbarScan({
     <div className="flex flex-col gap-4 items-end">
       {/* Toolbar */}
       <motion.div
-        className="bg-white rounded-[8px] p-2 w-fit flex gap-2 items-center"
+        className="bg-white rounded-[8px] p-2 w-fit flex gap-2 items-center shadow-[0_6px_20px_rgba(0,0,0,0.15)]"
         layout
         transition={{ layout: { duration: 0.25, ease: [0, 0, 1, 1] } }}
       >

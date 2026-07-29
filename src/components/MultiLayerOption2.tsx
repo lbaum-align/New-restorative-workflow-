@@ -374,7 +374,7 @@ export function MultiLayerOption2({ onViewChange, onSliderChange, onLayerStatesC
 
   return (
     <motion.div 
-      className={`w-fit mx-auto bg-white rounded-[8px] ${!isCollapsed ? 'p-2' : ''} px-[0px] py-[8px]`}
+      className={`w-fit mx-auto bg-white rounded-[8px] shadow-[0_6px_20px_rgba(0,0,0,0.15)] ${!isCollapsed ? 'p-2' : ''} px-[0px] py-[8px]`}
       layout
       transition={{
         layout: { 

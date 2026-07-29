@@ -143,6 +143,8 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
   const [showArrows, setShowArrows] = useState(true);
   const [ghostMain, setGhostMain] = useState(false);
   const [syncMain, setSyncMain] = useState(false);
+  const [hideMain, setHideMain] = useState(false);
+  const [hideModel, setHideModel] = useState(false);
 
   // Controls panel drag + collapse state
   const [panelCollapsed, setPanelCollapsed] = useState(false);
@@ -177,7 +179,7 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
     window.addEventListener('mouseup', onUp);
   }, []);
   const [guidanceMode, setGuidanceMode] = useState<
-    'fagwand-tilt3d' | 'fagwand-spin3d' | 'fagwand-nod3d' | 'fagwand-sweep3d' | 'fagwand-rock3d' | 'fagwand-tumble3d' | 'fagwand-wobble3d' | 'smart-nav'
+    'fagwand-tilt3d' | 'fagwand-spin3d' | 'fagwand-nod3d' | 'fagwand-sweep3d' | 'fagwand-rock3d' | 'fagwand-tumble3d' | 'fagwand-wobble3d' | 'fagwand-tiltnod3d' | 'smart-nav'
   >('fagwand-tilt3d');
   
   // Jaw scanning state - track which jaw is being viewed/scanned
@@ -192,8 +194,8 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
   // Banner for bite layer navigation
   const biteLayerToast = useBiteToast();
 
-  // Notification style: "top" = centered banner at top of canvas, "under-tab" = toast below the reference bite tab
-  const [biteNotifStyle, setBiteNotifStyle] = useState<"top" | "under-tab">("top");
+  // Notification style: "top" = centered banner at top of canvas, "under-tab" = toast below the reference bite tab, "bottom" = centered banner at bottom of canvas
+  const [biteNotifStyle, setBiteNotifStyle] = useState<"top" | "under-tab" | "bottom">("top");
   
   // Helper to get jaw state for a tab
   const getTabJawState = (tabId: string) => tabJawStates[tabId] || { upper: false, lower: false, bite: false };
@@ -235,8 +237,15 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
   const [isMonochrome, setIsMonochrome] = useState(false);
 
   const [showToothMarkers, setShowToothMarkers] = useState(false);
+  // Toggle visibility of the bottom workflow selector (Crown / Implant based / Dentures / Multi bite) with the 'H' key
+  const [hideWorkflowSelector, setHideWorkflowSelector] = useState(false);
   useEffect(() => {
-    const onDown = (e: KeyboardEvent) => { if (e.key.toLowerCase() === 't' && !e.repeat) setShowToothMarkers(v => !v); };
+    const onDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
+      if (e.key.toLowerCase() === 't' && !e.repeat) setShowToothMarkers(v => !v);
+      if (e.key.toLowerCase() === 'h' && !e.repeat) setHideWorkflowSelector(v => !v);
+    };
     window.addEventListener('keydown', onDown);
     return () => window.removeEventListener('keydown', onDown);
   }, []);
@@ -843,7 +852,7 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
       {/* Controls panel — draggable + collapsible when scan guidance is active (hidden when any toolbar tool is active) */}
       <div
         ref={panelRef}
-        className={`${isPrepEditOpen ? 'z-[40]' : 'z-[60]'} ${isAnyToolActive ? 'hidden' : ''}`}
+        className={`${isPrepEditOpen ? 'z-[40]' : 'z-[60]'} ${isAnyToolActive || hideWorkflowSelector ? 'hidden' : ''}`}
         style={
           enableScanGuidance && panelPos
             ? { position: 'fixed', left: panelPos.x, top: panelPos.y, userSelect: 'none' }
@@ -893,6 +902,7 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
                     { id: 'fagwand-rock3d',   label: '3D Rock' },
                     { id: 'fagwand-tumble3d', label: '3D Tumble' },
                     { id: 'fagwand-wobble3d', label: '3D Wobble' },
+                    { id: 'fagwand-tiltnod3d', label: '3D Tilt+Nod' },
                     { id: 'smart-nav',        label: 'Smart Nav' },
                   ] as const).map(({ id, label }) => (
                     <button
@@ -961,6 +971,41 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
                     Ghost main
                   </button>
 
+                  {/* Hide main */}
+                  <button
+                    onClick={() => setHideMain(v => !v)}
+                    title="Hide the main white silhouette"
+                    className={`flex items-center gap-[6px] px-[14px] py-[7px] rounded-[6px] transition-all text-[13px] whitespace-nowrap ${
+                      hideMain ? 'bg-[#009ace] text-white' : 'bg-gray-50 text-[#3e3d40] hover:bg-gray-100'
+                    }`}
+                    style={{ fontFamily: "'Roboto', sans-serif" }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      {hideMain
+                        ? <><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></>
+                        : <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>
+                      }
+                    </svg>
+                    {hideMain ? 'Main hidden' : 'Hide main'}
+                  </button>
+
+                  {/* Hide 3D model */}
+                  <button
+                    onClick={() => setHideModel(v => !v)}
+                    title="Hide the 3D jaw model"
+                    className={`flex items-center gap-[6px] px-[14px] py-[7px] rounded-[6px] transition-all text-[13px] whitespace-nowrap ${
+                      hideModel ? 'bg-[#009ace] text-white' : 'bg-gray-50 text-[#3e3d40] hover:bg-gray-100'
+                    }`}
+                    style={{ fontFamily: "'Roboto', sans-serif" }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                      <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+                      {hideModel && <line x1="2" y1="2" x2="22" y2="22"/>}
+                    </svg>
+                    {hideModel ? 'Model hidden' : 'Hide model'}
+                  </button>
+
                   {/* Sync main */}
                   <button
                     onClick={() => setSyncMain(v => !v)}
@@ -994,8 +1039,8 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
             )}
           </div>
         ) : (
-          /* Normal workflow selector - hidden in canvas theme mode */
-          !isCanvasThemeMode && (
+          /* Normal workflow selector - hidden in canvas theme mode, or toggled off with 'H' */
+          !isCanvasThemeMode && !hideWorkflowSelector && (
           <div className="flex flex-row items-center gap-[8px] bg-white rounded-[8px] p-[12px] shadow-lg">
             <button
               onClick={() => { setWorkflow("crown"); onWorkflowChange?.("crown"); }}
@@ -1113,6 +1158,17 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
           </div>
         )}
 
+        {/* Bite Layer Navigation Banner — only shown in "bottom" style mode */}
+        {biteNotifStyle === "bottom" && !isCopilotActive && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[70] pointer-events-none">
+            <BiteNavigationBanner
+              title={biteLayerToast.title}
+              body={biteLayerToast.body}
+              visible={biteLayerToast.visible}
+            />
+          </div>
+        )}
+
         {/* Undo variant switcher — draggable, toggle with 'E' key */}
         {isUndoPanelOpen && isSwitcherVisible && (
           <motion.div
@@ -1171,8 +1227,8 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
           </motion.div>
         )}
 
-        {/* Bite notification style switcher — hidden while Prep Copilot is open */}
-        {!isCopilotActive && (
+        {/* Bite notification style switcher — hidden while Prep Copilot is open or panels toggled off with 'H' */}
+        {!isCopilotActive && !hideWorkflowSelector && (
         <motion.div
           drag
           dragMomentum={false}
@@ -1182,7 +1238,7 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
           <div className="w-8 h-1 rounded-full bg-black/15 mb-0.5 self-center" />
           <span className="text-[10px] text-[#8a8a8a] font-medium">Bite alert:</span>
           <div className="flex items-center gap-1">
-            {(["top", "under-tab"] as const).map(style => (
+            {(["top", "under-tab", "bottom"] as const).map(style => (
               <button
                 key={style}
                 onPointerDown={e => e.stopPropagation()}
@@ -1193,7 +1249,7 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
                     : 'text-[#3E3D40] hover:bg-gray-100'
                 }`}
               >
-                {style === "top" ? "Top center" : "Under tab"}
+                {style === "top" ? "Top center" : style === "under-tab" ? "Under tab" : "Bottom center"}
               </button>
             ))}
           </div>
@@ -1436,6 +1492,8 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
               showArrows={showArrows}
               ghostMain={ghostMain}
               syncMain={syncMain}
+              hideMain={hideMain}
+              hideModel={hideModel}
               requireRightClick
               jaw={currentJaw || 'upper'}
             />

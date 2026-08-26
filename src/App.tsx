@@ -47,6 +47,7 @@ export default function App() {
   const [toothSpecifications, setToothSpecifications] = useState<{ [tooth: string]: { [key: string]: string } }>({});
   const [selectedBiteOptions, setSelectedBiteOptions] = useState<string[]>([]);
   const [preTreatmentEnabled, setPreTreatmentEnabled] = useState(false);
+  const [scanAssistEnabled, setScanAssistEnabled] = useState(true);
   const [canvasBg, setCanvasBg] = useState('#E0EDF4');
   const [isCanvasThemeMode, setIsCanvasThemeMode] = useState(false);
 
@@ -440,6 +441,8 @@ export default function App() {
             canvasBg={canvasBg}
             onCanvasBgChange={setCanvasBg}
             isCanvasThemeMode={isCanvasThemeMode}
+            scanAssistEnabled={scanAssistEnabled}
+            onScanAssistEnabledChange={setScanAssistEnabled}
           />
         </LayoutGroup>
       );
@@ -512,6 +515,8 @@ export default function App() {
           enableScanGuidance={true}
           canvasBg={canvasBg}
           onCanvasBgChange={setCanvasBg}
+          scanAssistEnabled={scanAssistEnabled}
+          onScanAssistEnabledChange={setScanAssistEnabled}
         />
       </LayoutGroup>
     );

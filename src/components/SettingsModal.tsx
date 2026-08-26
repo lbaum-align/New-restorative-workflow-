@@ -7,9 +7,11 @@ interface SettingsModalProps {
   onClose: () => void;
   canvasBg?: string;
   onCanvasBgChange?: (color: string) => void;
+  scanAssistEnabled?: boolean;
+  onScanAssistEnabledChange?: (v: boolean) => void;
 }
 
-type SettingsPage = "main" | "screen-appearance" | "brightness";
+type SettingsPage = "main" | "screen-appearance" | "brightness" | "scan-settings";
 
 interface ThemeConfig {
   color: string;
@@ -766,6 +768,112 @@ function VariantReferenceCard({ canvasBg, onCanvasBgChange }: ThemePickerProps) 
   );
 }
 
+// ─── Scan Settings Primitives & Page ─────────────────────────────────────────
+
+const SS_FONT: React.CSSProperties = {
+  fontFamily: "'Avenir', 'Avenir Next', sans-serif",
+  fontWeight: 500,
+  fontSize: 16,
+  color: '#3e3d40',
+};
+
+function SsRow({ children }: { children: React.ReactNode }) {
+  return <div className="flex items-center py-[13px] border-b border-[#d1d1d1]">{children}</div>;
+}
+
+function SsDropdown({ label, value }: { label: string; value: string }) {
+  return (
+    <SsRow>
+      <span className="flex-1" style={SS_FONT}>{label}</span>
+      <div className="flex items-center gap-[8px]">
+        <span style={{ ...SS_FONT, fontWeight: 400, color: '#717073' }}>{value}</span>
+        <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
+          <path d="M1 1L6 7L11 1" stroke="#2BABE2" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+    </SsRow>
+  );
+}
+
+function SsCheckbox({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <SsRow>
+      <button className="flex items-center gap-[12px] w-full text-left" onClick={() => onChange(!checked)}>
+        <div className="shrink-0 flex items-center justify-center" style={{
+          width: 20, height: 20,
+          border: `2px solid ${checked ? '#009ACE' : '#c4c4c4'}`,
+          background: checked ? '#009ACE' : 'white',
+          borderRadius: 3,
+        }}>
+          {checked && (
+            <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+              <path d="M1.5 4.5L4.5 7.5L10.5 1.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          )}
+        </div>
+        <span style={SS_FONT}>{label}</span>
+      </button>
+    </SsRow>
+  );
+}
+
+function ScanSettingsPage({
+  scanAssistEnabled = true,
+  onScanAssistEnabledChange,
+}: {
+  scanAssistEnabled?: boolean;
+  onScanAssistEnabledChange?: (v: boolean) => void;
+}) {
+  const [mirrorViewfinder, setMirrorViewfinder] = useState(true);
+  const [showColor, setShowColor] = useState(true);
+  const [enableGuidance, setEnableGuidance] = useState(true);
+  const [highlightRange, setHighlightRange] = useState(true);
+  const [feedbackOrtho, setFeedbackOrtho] = useState(true);
+  const [feedbackResto, setFeedbackResto] = useState(true);
+
+  return (
+    <div className="flex flex-col w-full overflow-y-auto">
+      <SsDropdown label="Scanning Position" value="Behind the Patient" />
+      <SsDropdown label="Gyro Orientation" value="Wand Tip Toward Screen" />
+      <SsDropdown label="Touchpad Orientation" value="Wand Tip Toward Screen" />
+      <SsCheckbox label="Mirror Viewfinder for Upper Jaw" checked={mirrorViewfinder} onChange={setMirrorViewfinder} />
+      <SsCheckbox label="Show color while scanning" checked={showColor} onChange={setShowColor} />
+      <SsDropdown label="Scan Order" value="Lower Jaw First" />
+      <SsDropdown label="Restorative Jaw Order" value="Prepped Jaw First" />
+      <SsDropdown label="Restorative Preps Order" value="Preps First" />
+      <SsCheckbox label="Enable guidance hints" checked={enableGuidance} onChange={setEnableGuidance} />
+      <SsCheckbox label="Highlight recommended scanning range" checked={highlightRange} onChange={setHighlightRange} />
+      <SsCheckbox label="Scan Assist" checked={scanAssistEnabled} onChange={(v) => onScanAssistEnabledChange?.(v)} />
+      <div className="h-px bg-[#c4c4c4] my-[6px]" />
+      <SsRow>
+        <span className="flex-1" style={SS_FONT}>Additional Scan Feedback</span>
+        <div className="flex items-center gap-[20px]">
+          {[
+            { label: 'Orthodontic', checked: feedbackOrtho, onChange: setFeedbackOrtho },
+            { label: 'Restorative', checked: feedbackResto, onChange: setFeedbackResto },
+          ].map(({ label, checked, onChange }) => (
+            <button key={label} className="flex items-center gap-[8px]" onClick={() => onChange(!checked)}>
+              <div className="shrink-0 flex items-center justify-center" style={{
+                width: 20, height: 20,
+                border: `2px solid ${checked ? '#009ACE' : '#c4c4c4'}`,
+                background: checked ? '#009ACE' : 'white',
+                borderRadius: 3,
+              }}>
+                {checked && (
+                  <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+                    <path d="M1.5 4.5L4.5 7.5L10.5 1.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </div>
+              <span style={{ ...SS_FONT, fontWeight: 400 }}>{label}</span>
+            </button>
+          ))}
+        </div>
+      </SsRow>
+    </div>
+  );
+}
+
 // ─── Pages ────────────────────────────────────────────────────────────────────
 
 function MainPage({
@@ -776,6 +884,8 @@ function MainPage({
   onNavigate: (page: SettingsPage) => void;
   canvasBg: string;
   onCanvasBgChange?: (color: string) => void;
+  scanAssistEnabled?: boolean;
+  onScanAssistEnabledChange?: (v: boolean) => void;
 }) {
   return (
     <div className="flex flex-col">
@@ -794,7 +904,7 @@ function MainPage({
       <div className="flex flex-col pr-[10px] py-[10px]">
         <SectionHead title="User Settings" />
         <div className="flex gap-[30px] items-start pb-[38px]">
-          <SettingsTile icon={<ScanIcon />} label="Scan Settings" />
+          <SettingsTile icon={<ScanIcon />} label="Scan Settings" onClick={() => onNavigate("scan-settings")} />
           <SettingsTile icon={<RxIcon />} label="Rx Settings" />
           <SettingsTile icon={<SignatureIcon />} label="Signature Settings" />
           <SettingsTile icon={<LanguageIcon />} label="Language" />
@@ -898,12 +1008,15 @@ export default function SettingsModal({
   onClose,
   canvasBg = "#E0EDF4",
   onCanvasBgChange,
+  scanAssistEnabled,
+  onScanAssistEnabledChange,
 }: SettingsModalProps) {
   const [currentPage, setCurrentPage] = useState<SettingsPage>("main");
 
   const pageTitle =
     currentPage === "main" ? "Settings" :
     currentPage === "screen-appearance" ? "View Appearance" :
+    currentPage === "scan-settings" ? "Scan Settings" :
     "Display Settings";
 
   return createPortal(
@@ -956,13 +1069,25 @@ export default function SettingsModal({
           style={{ paddingLeft: 30, paddingRight: currentPage === "main" ? 90 : 30 }}
         >
           {currentPage === "main" && (
-            <MainPage onNavigate={setCurrentPage} canvasBg={canvasBg} onCanvasBgChange={onCanvasBgChange} />
+            <MainPage
+              onNavigate={setCurrentPage}
+              canvasBg={canvasBg}
+              onCanvasBgChange={onCanvasBgChange}
+              scanAssistEnabled={scanAssistEnabled}
+              onScanAssistEnabledChange={onScanAssistEnabledChange}
+            />
           )}
           {currentPage === "screen-appearance" && (
             <ScreenAppearancePage canvasBg={canvasBg} onCanvasBgChange={onCanvasBgChange} />
           )}
           {currentPage === "brightness" && (
             <BrightnessPage canvasBg={canvasBg} onCanvasBgChange={onCanvasBgChange} />
+          )}
+          {currentPage === "scan-settings" && (
+            <ScanSettingsPage
+              scanAssistEnabled={scanAssistEnabled}
+              onScanAssistEnabledChange={onScanAssistEnabledChange}
+            />
           )}
         </div>
       </div>

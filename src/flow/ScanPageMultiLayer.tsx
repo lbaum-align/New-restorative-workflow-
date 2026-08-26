@@ -92,9 +92,13 @@ interface ScanPageMultiLayerProps {
   onCanvasBgChange?: (color: string) => void;
   /** When true, hides the Lumina Wand and workflow selector (entered from canvas theme page) */
   isCanvasThemeMode?: boolean;
+  /** Whether Scan Assist is enabled (triggers 3D guidance after 3s of inactivity) */
+  scanAssistEnabled?: boolean;
+  /** Callback when Scan Assist enabled state changes (from floating control or toolbar) */
+  onScanAssistEnabledChange?: (v: boolean) => void;
 }
 
-export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigateToMultiLayer, onNavigateToView, onNavigateToRx, onNavigateToSummary, scanType, onScannedLayersChange, onWorkflowChange, onBiteOptionsChange, toothTreatments, preTreatmentEnabled, enableScanGuidance, canvasBg = '#E0EDF4', onCanvasBgChange, isCanvasThemeMode = false }: ScanPageMultiLayerProps) {
+export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigateToMultiLayer, onNavigateToView, onNavigateToRx, onNavigateToSummary, scanType, onScannedLayersChange, onWorkflowChange, onBiteOptionsChange, toothTreatments, preTreatmentEnabled, enableScanGuidance, canvasBg = '#E0EDF4', onCanvasBgChange, isCanvasThemeMode = false, scanAssistEnabled = true, onScanAssistEnabledChange }: ScanPageMultiLayerProps) {
   type WorkflowType = "fixed-restorative" | "implant-based" | "dentures" | "crown";
   const [workflow, setWorkflow] = useState<WorkflowType>(() => {
     // First, check toothTreatments to determine workflow based on assigned treatments
@@ -243,17 +247,113 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
     const onDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
-      if (e.key.toLowerCase() === 't' && !e.repeat) setShowToothMarkers(v => !v);
+      if (e.key.toLowerCase() === 't' && !e.repeat) {
+        // Start a 600ms window: if 1/2/3 follows, switch toolbar option; otherwise toggle tooth markers
+        tPendingRef.current = true;
+        tTimerRef.current = setTimeout(() => {
+          tPendingRef.current = false;
+          setShowToothMarkers(v => !v);
+        }, 600);
+        return;
+      }
+      if (tPendingRef.current && (e.key === '1' || e.key === '2' || e.key === '3')) {
+        if (tTimerRef.current) clearTimeout(tTimerRef.current);
+        tPendingRef.current = false;
+        setToolbarMenuOption(Number(e.key) as 1 | 2 | 3);
+        return;
+      }
+      if (e.key.toLowerCase() === 'a' && !e.repeat) {
+        aPendingRef.current = true;
+        aTimerRef.current = setTimeout(() => { aPendingRef.current = false; }, 600);
+        return;
+      }
+      if (aPendingRef.current && (e.key === '1' || e.key === '2' || e.key === '3')) {
+        if (aTimerRef.current) clearTimeout(aTimerRef.current);
+        aPendingRef.current = false;
+        setScanAssistOption(Number(e.key) as 1 | 2 | 3);
+        return;
+      }
       if (e.key.toLowerCase() === 'h' && !e.repeat) setHideWorkflowSelector(v => !v);
     };
     window.addEventListener('keydown', onDown);
     return () => window.removeEventListener('keydown', onDown);
   }, []);
 
+  // ─── Scan Assist inactivity timer ───────────────────────────────────────────
+  // Keep ref in sync with prop to avoid stale closures in timer callbacks
+  useEffect(() => { scanAssistEnabledRef.current = scanAssistEnabled; }, [scanAssistEnabled]);
+
+  const playScanAssistSound = useCallback(() => {
+    try {
+      const ctx = new AudioContext();
+      [660, 880].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        const t = ctx.currentTime + i * 0.18;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.06, t + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+        osc.start(t);
+        osc.stop(t + 0.6);
+      });
+    } catch { /* audio not available */ }
+  }, []);
+
+  const scheduleAssistTrigger = useCallback(() => {
+    if (scanAssistTimerRef.current) clearTimeout(scanAssistTimerRef.current);
+    if (!scanAssistEnabledRef.current) return;
+    scanAssistTimerRef.current = setTimeout(() => {
+      if (scanAssistEnabledRef.current) {
+        setScanAssistActive(true);
+        playScanAssistSound();
+      }
+    }, 2000);
+  }, [playScanAssistSound]);
+
+  const dismissAssist = useCallback(() => {
+    setScanAssistActive(false);
+    scheduleAssistTrigger();
+  }, [scheduleAssistTrigger]);
+
+  // Start timer on mount (skip in demo guidance mode)
+  useEffect(() => {
+    if (enableScanGuidance) return;
+    scheduleAssistTrigger();
+    return () => { if (scanAssistTimerRef.current) clearTimeout(scanAssistTimerRef.current); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset timer on any mouse movement
+  useEffect(() => {
+    if (enableScanGuidance) return;
+    window.addEventListener('mousemove', dismissAssist);
+    return () => window.removeEventListener('mousemove', dismissAssist);
+  }, [dismissAssist, enableScanGuidance]);
+
+  // Respond to scanAssistEnabled prop changes
+  useEffect(() => {
+    if (enableScanGuidance) return;
+    if (!scanAssistEnabled) {
+      if (scanAssistTimerRef.current) clearTimeout(scanAssistTimerRef.current);
+      setScanAssistActive(false);
+    } else {
+      scheduleAssistTrigger();
+    }
+  }, [scanAssistEnabled, scheduleAssistTrigger, enableScanGuidance]);
+
   // Undo panel open state (panels render here at bottom-left, ToolbarScan controls open/close)
   const [isUndoPanelOpen, setIsUndoPanelOpen] = useState(false);
   const undoPanelCloseRef = useRef<(() => void) | null>(null);
   const isRestoringRef = useRef(false);
+  const tPendingRef = useRef(false);
+  const tTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const aPendingRef = useRef(false);
+  const aTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scanAssistEnabledRef = useRef(scanAssistEnabled);
+  const scanAssistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Visual reveal step for undo/redo 3D clipping effect (1-10, 10 = full model)
   const [revealStep, setRevealStep] = useState(10);
@@ -267,6 +367,12 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
   // Undo panel position: 'left-bottom', 'center-bottom', 'under-toolbar'
   type UndoPosition = 'left-bottom' | 'center-bottom' | 'under-toolbar';
   const [undoPosition, setUndoPosition] = useState<UndoPosition>('left-bottom');
+  // Toolbar menu option: 1=Inline, 2=+ flyout, 3=Secondary pill (switch with t+1/2/3)
+  const [toolbarMenuOption, setToolbarMenuOption] = useState<1 | 2 | 3>(1);
+  // Scan Assist option: 1=settings only, 2=floating control, 3=toolbar button (switch with a+1/2/3)
+  const [scanAssistOption, setScanAssistOption] = useState<1 | 2 | 3>(1);
+  // Whether scan assist guidance is currently visible (triggered by inactivity timer)
+  const [scanAssistActive, setScanAssistActive] = useState(false);
   // Switcher panel visibility (toggle with 'E' key)
   const [isSwitcherVisible, setIsSwitcherVisible] = useState(true);
   // Draggable switcher position
@@ -848,7 +954,37 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
   };
 
   return (
-    <div className="flex flex-col h-screen w-full relative" style={{ background: canvasBg }}>
+    <div className="flex flex-col h-screen w-full relative overflow-hidden" style={{ background: canvasBg }}>
+      {/* Scan Assist floating toggle — Option 2, fixed to bottom-left of viewport */}
+      {!enableScanGuidance && scanAssistOption === 2 && (
+        <div className="fixed bottom-4 right-4 z-[100]">
+          <button
+            onClick={() => onScanAssistEnabledChange?.(!scanAssistEnabled)}
+            className="flex items-center gap-[10px] px-[14px] py-[10px] rounded-[10px] shadow-[0px_2px_8px_rgba(0,0,0,0.18)] transition-colors"
+            style={{
+              background: 'white',
+              border: `1.5px solid ${scanAssistEnabled ? '#009ACE' : '#d1d1d1'}`,
+            }}
+          >
+            <div
+              className="relative flex-shrink-0 rounded-full transition-colors"
+              style={{ width: 36, height: 20, background: scanAssistEnabled ? '#009ACE' : '#c4c4c4' }}
+            >
+              <div
+                className="absolute top-[2px] rounded-full bg-white shadow transition-transform"
+                style={{ width: 16, height: 16, transform: `translateX(${scanAssistEnabled ? 18 : 2}px)` }}
+              />
+            </div>
+            <span style={{
+              fontFamily: "'Avenir', 'Avenir Next', sans-serif",
+              fontWeight: 500, fontSize: 14, color: '#3e3d40', userSelect: 'none',
+            }}>
+              Scan Assist
+            </span>
+          </button>
+        </div>
+      )}
+
       {/* Controls panel — draggable + collapsible when scan guidance is active (hidden when any toolbar tool is active) */}
       <div
         ref={panelRef}
@@ -1038,33 +1174,7 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
               </div>
             )}
           </div>
-        ) : (
-          /* Normal workflow selector - hidden in canvas theme mode, or toggled off with 'H' */
-          !isCanvasThemeMode && !hideWorkflowSelector && (
-          <div className="flex flex-row items-center gap-[8px] bg-white rounded-[8px] p-[12px] shadow-lg">
-            <button
-              onClick={() => { setWorkflow("crown"); onWorkflowChange?.("crown"); }}
-              className={`px-[16px] py-[8px] rounded-[6px] transition-all text-center text-[14px] whitespace-nowrap ${workflow === "crown" ? 'bg-[#009ace] text-white' : 'bg-transparent text-[#3e3d40] hover:bg-gray-50'}`}
-              style={{ fontFamily: "'Roboto', sans-serif" }}
-            >Crown</button>
-            <button
-              onClick={() => { setWorkflow("implant-based"); onWorkflowChange?.("implantPlanning"); }}
-              className={`px-[16px] py-[8px] rounded-[6px] transition-all text-center text-[14px] whitespace-nowrap ${workflow === "implant-based" ? 'bg-[#009ace] text-white' : 'bg-transparent text-[#3e3d40] hover:bg-gray-50'}`}
-              style={{ fontFamily: "'Roboto', sans-serif" }}
-            >Implant based</button>
-            <button
-              onClick={() => { setWorkflow("dentures"); onWorkflowChange?.("dentures"); }}
-              className={`px-[16px] py-[8px] rounded-[6px] transition-all text-center text-[14px] whitespace-nowrap ${workflow === "dentures" ? 'bg-[#009ace] text-white' : 'bg-transparent text-[#3e3d40] hover:bg-gray-50'}`}
-              style={{ fontFamily: "'Roboto', sans-serif" }}
-            >Dentures</button>
-            <button
-              onClick={() => { setWorkflow("fixed-restorative"); onWorkflowChange?.("fixed-restorative"); }}
-              className={`px-[16px] py-[8px] rounded-[6px] transition-all text-center text-[14px] whitespace-nowrap ${workflow === "fixed-restorative" ? 'bg-[#009ace] text-white' : 'bg-transparent text-[#3e3d40] hover:bg-gray-50'}`}
-              style={{ fontFamily: "'Roboto', sans-serif" }}
-            >Multi bite</button>
-          </div>
-          )
-        )}
+        ) : null}
       </div>
 
       <Header
@@ -1084,6 +1194,8 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
         onNavigateToSummary={onNavigateToSummary}
         canvasBg={canvasBg}
         onCanvasBgChange={onCanvasBgChange}
+        scanAssistEnabled={scanAssistEnabled}
+        onScanAssistEnabledChange={onScanAssistEnabledChange}
       />
 
       {/* Chrome Tabs - Below Header, with solid background (no gradient) */}
@@ -1104,12 +1216,6 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
           onStudyModelAdditionalBiteToggle={() => setHasStudyModelAdditionalBite(!hasStudyModelAdditionalBite)}
           isScanning={isScanning}
           onDeleteTab={handleDeleteTab}
-          underTabToast={biteNotifStyle === "under-tab" ? {
-            title: biteLayerToast.title,
-            body: biteLayerToast.body,
-            visible: biteLayerToast.visible,
-          } : undefined}
-          underTabToastAnchorId={biteNotifStyle === "under-tab" ? referenceBiteLayerId : null}
         />
       </div>
       
@@ -1118,7 +1224,8 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
         {/* ToolbarScan - Fixed in top right corner */}
         <div className="absolute right-4 top-4 z-50">
           <ToolbarScan
-            hideCopilot={workflow === "dentures"}
+            hideCopilot={true}
+            menuOption={toolbarMenuOption}
             copilotActive={isCopilotActive}
             onPrepEditChange={setIsPrepEditOpen}
             onCopilotChange={setIsCopilotActive}
@@ -1144,30 +1251,14 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
             }}
             onUndo={handleUndoAction}
             undoVariant={undoVariant}
+            showScanAssistButton={!enableScanGuidance && scanAssistOption === 3}
+            scanAssistEnabled={scanAssistEnabled}
+            onScanAssistChange={onScanAssistEnabledChange}
+            scanAssistOption={!enableScanGuidance ? scanAssistOption : undefined}
           />
         </div>
 
-        {/* Bite Layer Navigation Banner — only shown in "top" style mode */}
-        {biteNotifStyle === "top" && !isCopilotActive && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[70] pointer-events-none">
-            <BiteNavigationBanner
-              title={biteLayerToast.title}
-              body={biteLayerToast.body}
-              visible={biteLayerToast.visible}
-            />
-          </div>
-        )}
 
-        {/* Bite Layer Navigation Banner — only shown in "bottom" style mode */}
-        {biteNotifStyle === "bottom" && !isCopilotActive && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[70] pointer-events-none">
-            <BiteNavigationBanner
-              title={biteLayerToast.title}
-              body={biteLayerToast.body}
-              visible={biteLayerToast.visible}
-            />
-          </div>
-        )}
 
         {/* Undo variant switcher — draggable, toggle with 'E' key */}
         {isUndoPanelOpen && isSwitcherVisible && (
@@ -1481,27 +1572,28 @@ export default function ScanPageMultiLayer({ patient, onBack, onHome, onNavigate
           </div>
         )}
 
-        {/* Scan Guidance 3D Viewer - shown only when enableScanGuidance is true and Copilot is off */}
-        {enableScanGuidance && !isCopilotActive && (
-          <div className="absolute inset-0 z-0" style={{ pointerEvents: 'auto' }}>
+        {/* Scan Guidance 3D Viewer — always visible on scan page (copilot hides it) */}
+        {!isCopilotActive && (
+          <div className="absolute inset-0 z-0" style={{ pointerEvents: !enableScanGuidance ? 'none' : 'auto' }}>
             <ScanGuidanceViewer
               resetTrigger={guidanceResetCounter}
-              guidanceMode={guidanceMode}
+              guidanceMode={enableScanGuidance ? guidanceMode : 'fagwand-tiltnod3d'}
               lockModel={lockModel}
               hideTopBar
-              showArrows={showArrows}
+              showArrows={enableScanGuidance ? showArrows : false}
+              pauseAnimation={!enableScanGuidance && !(scanAssistEnabled && scanAssistActive)}
               ghostMain={ghostMain}
               syncMain={syncMain}
-              hideMain={hideMain}
+              hideMain={!enableScanGuidance ? (scanAssistEnabled && scanAssistActive) : hideMain}
               hideModel={hideModel}
-              requireRightClick
+              requireRightClick={enableScanGuidance}
               jaw={currentJaw || 'upper'}
             />
           </div>
         )}
 
-        {/* Center Area - Scanning Animation and 3D Model (only shown in normal test flow) */}
-        <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${enableScanGuidance || isCopilotActive ? 'hidden' : ''} ${isUndoPanelOpen ? 'z-[5]' : 'z-0'}`}>
+        {/* Center Area - hidden when guidance viewer is showing (which is always except copilot) */}
+        <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${!isCopilotActive ? 'hidden' : ''} ${isUndoPanelOpen ? 'z-[5]' : 'z-0'}`}>
           {/* 3D Teeth Model - Show when scanning, jaw scanned, or undo panel is open */}
           {(isScanning || isUndoPanelOpen || hasAppliedUndoState || (currentJaw && (
             currentJaw === 'bite'

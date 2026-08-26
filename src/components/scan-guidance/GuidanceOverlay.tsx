@@ -5,8 +5,9 @@ import type {
   GuidanceState, ScanStage, FrameEdge, GuidanceDirection, ScanRegion, GuidanceMode,
 } from './types';
 
-const ShowArrowsContext = React.createContext(true);
-const GhostMainContext  = React.createContext({ ghostMain: false, syncMain: false, hideMain: false, keyDir: 0 as -1 | 0 | 1 });
+const ShowArrowsContext  = React.createContext(true);
+const GhostMainContext   = React.createContext({ ghostMain: false, syncMain: false, hideMain: false, keyDir: 0 as -1 | 0 | 1 });
+const PauseAnimContext   = React.createContext(false);
 
 interface GuidanceOverlayProps {
   guidance: GuidanceState;
@@ -29,6 +30,8 @@ interface GuidanceOverlayProps {
   hideMain?: boolean;
   /** A/D key direction: -1 = A (left), 0 = idle, 1 = D (right) — moves the main wand along current axis */
   keyDir?: -1 | 0 | 1;
+  /** Freeze the ghost wand CSS animation (idle scan-assist state — shows white silhouette only) */
+  pauseAnimation?: boolean;
 }
 
 const ARROW_RED          = '#E74C3C';
@@ -2081,6 +2084,7 @@ function GhostWandOverlay({ mode, g, f, showArrows: showArrowsProp = true, ghost
 }) {
   const { ghostMain, syncMain, hideMain, keyDir } = useContext(GhostMainContext);
   const globalShowArrows = useContext(ShowArrowsContext);
+  const pauseAnim = useContext(PauseAnimContext);
   const showArrows = showArrowsProp && globalShowArrows;
   const pct = Math.round(g.coveragePercent * 100);
   const isScanning = g.phase === 'scanning';
@@ -2104,8 +2108,8 @@ function GhostWandOverlay({ mode, g, f, showArrows: showArrowsProp = true, ghost
         position: 'absolute', inset: 0, pointerEvents: 'none',
         transform: `translate(${wandOffset.x}px, ${wandOffset.y}px)`,
       }}>
-        {/* Ghost — hidden when arrows are active; otherwise full wand or just the center rect */}
-        {!showArrows && (
+        {/* Ghost — hidden when arrows are active or animation is paused (idle scan-assist state) */}
+        {!showArrows && !pauseAnim && (
           <div style={{
             position: 'absolute', top: '50%', left: '50%',
             width: wandW, height: wandH,
@@ -2456,11 +2460,13 @@ function SmartNavOverlay({ guidance, containerSize, pointerNDC, wandOffset = { x
 
 // ─── Main dispatcher ───────────────────────────────────────────────────────────
 
-export default function GuidanceOverlay({ showArrows = true, ghostMain = false, syncMain = false, hideMain = false, keyDir = 0, ...rest }: GuidanceOverlayProps) {
+export default function GuidanceOverlay({ showArrows = true, ghostMain = false, syncMain = false, hideMain = false, keyDir = 0, pauseAnimation = false, ...rest }: GuidanceOverlayProps) {
   return (
     <ShowArrowsContext.Provider value={showArrows}>
       <GhostMainContext.Provider value={{ ghostMain, syncMain, hideMain, keyDir }}>
-        <GuidanceOverlayInner {...rest} />
+        <PauseAnimContext.Provider value={pauseAnimation}>
+          <GuidanceOverlayInner {...rest} />
+        </PauseAnimContext.Provider>
       </GhostMainContext.Provider>
     </ShowArrowsContext.Provider>
   );

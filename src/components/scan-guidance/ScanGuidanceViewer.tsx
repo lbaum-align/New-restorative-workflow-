@@ -388,9 +388,11 @@ interface ScanGuidanceViewerProps {
   requireRightClick?: boolean;
   /** Which jaw model to render */
   jaw?: JawType;
+  /** Freeze the ghost wand animation (idle scan-assist state — shows static white silhouette) */
+  pauseAnimation?: boolean;
 }
 
-export default function ScanGuidanceViewer({ resetTrigger, guidanceMode = 'classic', lockModel = false, hideTopBar = false, showArrows = true, ghostMain = false, syncMain = false, hideMain = false, hideModel = false, requireRightClick = false, jaw = 'upper' }: ScanGuidanceViewerProps) {
+export default function ScanGuidanceViewer({ resetTrigger, guidanceMode = 'classic', lockModel = false, hideTopBar = false, showArrows = true, ghostMain = false, syncMain = false, hideMain = false, hideModel = false, requireRightClick = false, jaw = 'upper', pauseAnimation = false }: ScanGuidanceViewerProps) {
   const [guidance, setGuidance] = useState<GuidanceState>({
     phase: 'idle', direction: null, hint: '', coveragePercent: 0,
     activeRegion: null, regions: [],
@@ -580,6 +582,7 @@ export default function ScanGuidanceViewer({ resetTrigger, guidanceMode = 'class
         syncMain={syncMain}
         hideMain={hideMain}
         keyDir={keyDir}
+        pauseAnimation={pauseAnimation}
       />
     </div>
   );

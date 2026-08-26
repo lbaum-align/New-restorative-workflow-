@@ -188,9 +188,11 @@ interface HeaderProps {
   onNavigateToSummary?: () => void;
   canvasBg?: string;
   onCanvasBgChange?: (color: string) => void;
+  scanAssistEnabled?: boolean;
+  onScanAssistEnabledChange?: (v: boolean) => void;
 }
 
-export default function Header({ activeSteps = { scan: true }, onStepToggle, onNavigateToRx, onNavigateToScan, onNavigateToView, onNavigateToSummary, canvasBg, onCanvasBgChange }: HeaderProps) {
+export default function Header({ activeSteps = { scan: true }, onStepToggle, onNavigateToRx, onNavigateToScan, onNavigateToView, onNavigateToSummary, canvasBg, onCanvasBgChange, scanAssistEnabled, onScanAssistEnabledChange }: HeaderProps) {
   const [showSettings, setShowSettings] = useState(false);
   return (
     <div className="bg-white flex flex-col items-start relative w-full shrink-0 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.1),0px_2px_8px_0px_rgba(0,0,0,0.15)] sticky top-0 z-[250]">
@@ -273,7 +275,7 @@ export default function Header({ activeSteps = { scan: true }, onStepToggle, onN
           </button>
         </div>
       </div>
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} canvasBg={canvasBg} onCanvasBgChange={onCanvasBgChange} />}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} canvasBg={canvasBg} onCanvasBgChange={onCanvasBgChange} scanAssistEnabled={scanAssistEnabled} onScanAssistEnabledChange={onScanAssistEnabledChange} />}
     </div>
   );
 }
